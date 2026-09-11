@@ -119,17 +119,6 @@ export async function updateDealRow(
   return data as Deal;
 }
 
-/**
- * Deletes only the deal (and its activities/tasks, via ON DELETE CASCADE) -
- * the contact record is kept, since a contact can have other deals or just
- * standing history. Matches the real schema's contact/deal split; the
- * prototype's single-table "delete client" becomes "delete this deal".
- */
-export async function deleteDealRow(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.from("deals").delete().eq("id", id);
-  if (error) throw error;
-}
-
 export async function addActivity(
   supabase: SupabaseClient,
   params: {

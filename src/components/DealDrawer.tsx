@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
@@ -35,7 +35,6 @@ interface DealDrawerProps {
   onUpdateDeal: (patch: Partial<Deal>) => Promise<void>;
   onChangeStage: (newStageId: number) => Promise<void>;
   onAddNote: (contenu: string) => Promise<void>;
-  onDelete: () => Promise<void>;
 }
 
 export function DealDrawer({
@@ -51,17 +50,14 @@ export function DealDrawer({
   onUpdateDeal,
   onChangeStage,
   onAddNote,
-  onDelete,
 }: DealDrawerProps) {
   const [localContact, setLocalContact] = useState(deal.contact);
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
   const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     setLocalContact(deal.contact);
     setLocalDeal(deal);
-    setConfirmingDelete(false);
   }, [deal]);
 
   const clientDupes = findClientMatchesForDeal(deal, allDeals, deal.id);
@@ -110,15 +106,6 @@ export function DealDrawer({
             <p className="text-xs text-textSoft">{saving ? "Enregistrement…" : "Enregistré"}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setConfirmingDelete((v) => !v)}
-              className="text-textSoft hover:text-red-500"
-              aria-label="Supprimer le dossier"
-              title="Supprimer le dossier"
-            >
-              <Trash2 size={17} />
-            </button>
             <button type="button" onClick={onClose} className="text-textSoft hover:text-text" aria-label="Fermer">
               <X size={20} />
             </button>
@@ -126,30 +113,6 @@ export function DealDrawer({
         </div>
 
         <div className="px-5 py-4 space-y-5">
-          {confirmingDelete && (
-            <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-3.5 py-3 space-y-2">
-              <p className="text-sm text-red-500">
-                Supprimer définitivement ce dossier (deal) et tout son historique ? Le contact reste conservé.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600"
-                >
-                  Confirmer la suppression
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDelete(false)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text"
-                >
-                  Annuler
-                </button>
-              </div>
-            </div>
-          )}
-
           {(clientDupes.length > 0 || coachDupes.length > 0) && (
             <div className="space-y-1.5">
               {clientDupes.length > 0 && (

@@ -8,7 +8,6 @@ import {
   addActivity,
   changeDealStage,
   createContactAndDeal,
-  deleteDealRow,
   fetchActivitiesForDeal,
   fetchCoaches,
   fetchDeals,
@@ -147,13 +146,6 @@ export default function DashboardPage() {
       createdBy: userId,
     });
     await loadActivities(selectedDeal.id);
-  }
-
-  async function handleDeleteSelected() {
-    if (!selectedDeal) return;
-    await deleteDealRow(supabase, selectedDeal.id);
-    setDeals((prev) => prev.filter((d) => d.id !== selectedDeal.id));
-    setSelectedDealId(null);
   }
 
   async function handleExport() {
@@ -433,7 +425,6 @@ export default function DashboardPage() {
           onUpdateDeal={handleUpdateSelectedDeal}
           onChangeStage={handleChangeStage}
           onAddNote={handleAddNote}
-          onDelete={handleDeleteSelected}
         />
       )}
     </div>
