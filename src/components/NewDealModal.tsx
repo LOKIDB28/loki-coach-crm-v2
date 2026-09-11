@@ -28,8 +28,7 @@ const emptyDraft = {
   owner_id: "" as string,
   source: "",
   niveau_interet: "" as string,
-  coach_neuf_vise: "",
-  coach_unite: "",
+  coach_vise: "",
   note: "",
 };
 
@@ -50,12 +49,8 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
   );
 
   const coachDupes = useMemo(
-    () =>
-      findCoachMatchesForDeal(
-        { coach_neuf_vise: draft.coach_neuf_vise, coach_unite: draft.coach_unite },
-        existingDeals
-      ),
-    [draft.coach_neuf_vise, draft.coach_unite, existingDeals]
+    () => findCoachMatchesForDeal({ coach_vise: draft.coach_vise }, existingDeals),
+    [draft.coach_vise, existingDeals]
   );
 
   if (!open) return null;
@@ -87,8 +82,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
         titre: fullName(draft) || "Nouveau dossier",
         owner_id: draft.owner_id || null,
         niveau_interet: (draft.niveau_interet || null) as Deal["niveau_interet"],
-        coach_neuf_vise: draft.coach_neuf_vise.trim() || null,
-        coach_unite: draft.coach_unite.trim() || null,
+        coach_vise: draft.coach_vise.trim() || null,
       };
       await onCreate(contactInput, dealInput, draft.note.trim());
       setDraft(emptyDraft);
@@ -185,11 +179,8 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
                 ))}
               </Select>
             </Field>
-            <Field label="Coach neuf visé">
-              <TextInput value={draft.coach_neuf_vise} onChange={(e) => update("coach_neuf_vise", e.target.value)} />
-            </Field>
-            <Field label="N° d'unité / stock">
-              <TextInput value={draft.coach_unite} onChange={(e) => update("coach_unite", e.target.value)} />
+            <Field label="Coach visé" className="col-span-2">
+              <TextInput value={draft.coach_vise} onChange={(e) => update("coach_vise", e.target.value)} />
             </Field>
           </div>
 

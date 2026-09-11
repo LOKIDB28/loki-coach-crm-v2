@@ -319,18 +319,11 @@ export function DealDrawer({
               defaultOpen={localDeal.stage_id === contactStage?.id}
             >
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Coach neuf visé">
+                <Field label="Coach visé" className="col-span-2">
                   <TextInput
-                    value={localDeal.coach_neuf_vise ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, coach_neuf_vise: e.target.value }))}
-                    onBlur={(e) => commitDeal({ coach_neuf_vise: e.target.value })}
-                  />
-                </Field>
-                <Field label="N° d'unité / stock">
-                  <TextInput
-                    value={localDeal.coach_unite ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, coach_unite: e.target.value }))}
-                    onBlur={(e) => commitDeal({ coach_unite: e.target.value })}
+                    value={localDeal.coach_vise ?? ""}
+                    onChange={(e) => setLocalDeal((d) => ({ ...d, coach_vise: e.target.value }))}
+                    onBlur={(e) => commitDeal({ coach_vise: e.target.value })}
                   />
                 </Field>
                 <Field label="Coach (inventaire)" className="col-span-2">
@@ -382,15 +375,15 @@ export function DealDrawer({
                 <Field label="Date visite d'usine">
                   <TextInput
                     type="datetime-local"
-                    value={toDatetimeLocalValue(localDeal.visite_usine_date)}
-                    onChange={(e) => commitDeal({ visite_usine_date: fromDatetimeLocalValue(e.target.value) })}
+                    value={toDatetimeLocalValue(localDeal.date_visite_usine)}
+                    onChange={(e) => commitDeal({ date_visite_usine: fromDatetimeLocalValue(e.target.value) })}
                   />
                 </Field>
                 <Field label="Date essai routier">
                   <TextInput
                     type="datetime-local"
-                    value={toDatetimeLocalValue(localDeal.essai_routier_date)}
-                    onChange={(e) => commitDeal({ essai_routier_date: fromDatetimeLocalValue(e.target.value) })}
+                    value={toDatetimeLocalValue(localDeal.date_essai_routier)}
+                    onChange={(e) => commitDeal({ date_essai_routier: fromDatetimeLocalValue(e.target.value) })}
                   />
                 </Field>
               </div>
@@ -411,6 +404,14 @@ export function DealDrawer({
                   <CurrencyInput value={localDeal.valeur_echange} onChange={(v) => commitDeal({ valeur_echange: v })} />
                 </Field>
               </div>
+              <Field label="Options sélectionnées">
+                <TextArea
+                  value={localDeal.options ?? ""}
+                  onChange={(e) => setLocalDeal((d) => ({ ...d, options: e.target.value }))}
+                  onBlur={(e) => commitDeal({ options: e.target.value })}
+                  rows={2}
+                />
+              </Field>
               <p className="text-xs font-medium text-textSoft pt-1">Véhicule usagé en échange</p>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <Field label="Marque">
@@ -457,14 +458,6 @@ export function DealDrawer({
                   </Select>
                 </Field>
               </div>
-              <Field label="Description du véhicule en échange">
-                <TextArea
-                  value={localDeal.echange_description ?? ""}
-                  onChange={(e) => setLocalDeal((d) => ({ ...d, echange_description: e.target.value }))}
-                  onBlur={(e) => commitDeal({ echange_description: e.target.value })}
-                  rows={2}
-                />
-              </Field>
               <Field label="N° de série (échange)">
                 <TextInput
                   value={localDeal.echange_numero_serie ?? ""}
@@ -491,7 +484,14 @@ export function DealDrawer({
               active={localDeal.stage_id === gagneStage?.id}
               defaultOpen={localDeal.stage_id === gagneStage?.id}
             >
+              <p className="text-xs text-textSoft -mt-1">
+                Le montant final est le même champ que le prix de vente saisi à l&apos;étape Proposition -
+                ajustable ici aussi si le montant signé diffère.
+              </p>
               <div className="grid grid-cols-2 gap-3">
+                <Field label="Montant final">
+                  <CurrencyInput value={localDeal.montant} onChange={(v) => commitDeal({ montant: v })} />
+                </Field>
                 <Field label="Date du contrat">
                   <TextInput
                     type="date"
@@ -505,9 +505,6 @@ export function DealDrawer({
                     onChange={(e) => setLocalDeal((d) => ({ ...d, numero_contrat: e.target.value }))}
                     onBlur={(e) => commitDeal({ numero_contrat: e.target.value })}
                   />
-                </Field>
-                <Field label="Montant final">
-                  <CurrencyInput value={localDeal.montant_final} onChange={(v) => commitDeal({ montant_final: v })} />
                 </Field>
                 <Field label="Date du 1er rendez-vous service">
                   <TextInput

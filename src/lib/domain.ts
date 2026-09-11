@@ -80,8 +80,7 @@ export interface DupeCandidate {
   nom?: string | null;
   telephone?: string | null;
   email?: string | null;
-  coachNeufVise?: string | null;
-  coachUnite?: string | null;
+  coachVise?: string | null;
 }
 
 export function fullName(c: { prenom?: string | null; nom?: string | null }): string {
@@ -116,23 +115,24 @@ export function findClientMatches<T extends DupeCandidate>(
 }
 
 /**
- * Ported as-is from the prototype: exact (case-insensitive, trimmed) match
- * on the targeted unit/stock number or new-coach description flags two
- * reps chasing the same physical unit.
+ * Adapted from the prototype's findCoachMatches (originally a match on
+ * either a targeted-unit number or a new-coach description, now a single
+ * free-text coach_vise field): exact case-insensitive match flags two reps
+ * chasing the same physical coach. Coarser than the two-field original -
+ * accepted tradeoff of the coach_vise merge, revisit if it under-matches
+ * in practice.
  */
 export function findCoachMatches<T extends DupeCandidate>(
   candidate: DupeCandidate,
   pool: T[],
   excludeId?: string
 ): T[] {
-  const coach = (candidate.coachNeufVise || "").trim().toLowerCase();
-  const unit = (candidate.coachUnite || "").trim().toLowerCase();
-  if (!coach && !unit) return [];
+  const coach = (candidate.coachVise || "").trim().toLowerCase();
+  if (!coach) return [];
   return pool.filter((c) => {
     if (excludeId && c.id === excludeId) return false;
-    const cCoach = (c.coachNeufVise || "").trim().toLowerCase();
-    const cUnit = (c.coachUnite || "").trim().toLowerCase();
-    return (!!unit && !!cUnit && cUnit === unit) || (!!coach && !!cCoach && cCoach === coach);
+    const cCoach = (c.coachVise || "").trim().toLowerCase();
+    return !!cCoach && cCoach === coach;
   });
 }
 
@@ -143,8 +143,7 @@ function toDupeCandidate(d: {
   nom?: string | null;
   telephone?: string | null;
   email?: string | null;
-  coach_neuf_vise?: string | null;
-  coach_unite?: string | null;
+  coach_vise?: string | null;
 }): DupeCandidate {
   return {
     id: d.id,
@@ -152,8 +151,7 @@ function toDupeCandidate(d: {
     nom: d.contact?.nom ?? d.nom,
     telephone: d.contact?.telephone ?? d.telephone,
     email: d.contact?.email ?? d.email,
-    coachNeufVise: d.coach_neuf_vise,
-    coachUnite: d.coach_unite,
+    coachVise: d.coach_vise,
   };
 }
 
@@ -169,7 +167,7 @@ export function findClientMatchesForDeal(
 }
 
 export function findCoachMatchesForDeal(
-  candidate: Pick<Deal, "coach_neuf_vise" | "coach_unite"> & { id?: string },
+  candidate: Pick<Deal, "coach_vise"> & { id?: string },
   deals: DealWithContact[],
   excludeId?: string
 ): DealWithContact[] {

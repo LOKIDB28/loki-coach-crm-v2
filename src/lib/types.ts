@@ -1,6 +1,8 @@
 // Hand-written types matching the real loki-crm-prod schema (project ref
-// lxujdwlhcsgfsvqrtgfq) plus supabase/migrations/0002_extend_deals_for_mvp.sql.
-// Keep in sync manually - no generated types in this MVP.
+// lxujdwlhcsgfsvqrtgfq) plus supabase/migrations/0003_extend_deals_for_mvp.sql.
+// Keep in sync manually - no generated types in this MVP. Note: the option
+// unions below (NiveauInteret, EvaluationClient, Accidente) are enforced by
+// this app only - the 0003 columns have no DB check constraint.
 
 export type TypeContact = "particulier" | "entreprise" | "concessionnaire";
 
@@ -99,24 +101,24 @@ export interface Deal {
   lost_reason: string | null;
   next_action_at: string | null;
 
-  // Added by 0002_extend_deals_for_mvp.sql - not present in the original
-  // loki-crm-prod schema.
-  coach_neuf_vise: string | null;
-  coach_unite: string | null;
+  // Added by 0003_extend_deals_for_mvp.sql - not present in the original
+  // loki-crm-prod schema. No montant_final: montant itself doubles as the
+  // proposal value and the final contract amount - there is only one
+  // amount field on a deal.
   niveau_interet: NiveauInteret | null;
+  coach_vise: string | null;
   evaluation_client: EvaluationClient | null;
-  visite_usine_date: string | null;
-  essai_routier_date: string | null;
+  date_visite_usine: string | null;
+  date_essai_routier: string | null;
+  options: string | null;
   echange_marque: string | null;
   echange_modele: string | null;
   echange_annee: string | null;
   echange_km: string | null;
-  echange_description: string | null;
   echange_numero_serie: string | null;
   echange_accidente: Accidente | null;
   date_contrat: string | null;
   numero_contrat: string | null;
-  montant_final: number | null;
   date_rdv_service: string | null;
 }
 

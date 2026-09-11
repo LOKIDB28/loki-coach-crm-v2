@@ -30,7 +30,7 @@ This app targets the existing **loki-crm-prod** project — there is no
 fresh Supabase project to create.
 
 1. **Apply the additive migration**: in the `loki-crm-prod` Supabase SQL
-   editor, run `supabase/migrations/0002_extend_deals_for_mvp.sql`. It only
+   editor, run `supabase/migrations/0003_extend_deals_for_mvp.sql`. It only
    adds nullable columns to `deals` (never touches existing data) to cover
    MVP fields the original prod schema didn't have yet (niveau d'intérêt,
    évaluation client, dates par étape, contrat, véhicule d'échange). See
@@ -131,7 +131,7 @@ every activity), per the migration mandate.
 ## Data model
 
 `loki-crm-prod`'s real schema, extended by
-`supabase/migrations/0002_extend_deals_for_mvp.sql` (see that file's header
+`supabase/migrations/0003_extend_deals_for_mvp.sql` (see that file's header
 for the exact list of added columns):
 
 - **`profiles`** — one row per team member (Supabase Auth user), with a
@@ -143,7 +143,7 @@ for the exact list of added columns):
   single-table model assumed one-to-one).
 - **`deals`** — the pipeline itself: `contact_id`, `stage_id` (→
   `pipeline_stages`), `owner_id`, amounts, and the per-stage structured
-  fields added by the 0002 migration (provenance/intérêt now live on the
+  fields added by the 0003 migration (provenance/intérêt now live on the
   contact or deal — see the migration file). Mirrors the prototype's
   `emptyClient()` shape as closely as the real schema allows.
 - **`pipeline_stages`** — 7 stages (`prospect`, `contact`, `rencontre`,
@@ -203,7 +203,7 @@ table, multi-tenancy, coach-inventory management UI, and a recurring
 ```
 loki-coach-crm-v2/
   supabase/migrations/0001_init.sql          Historical only - scaffold's original schema, never run
-  supabase/migrations/0002_extend_deals_for_mvp.sql  Additive migration actually run against loki-crm-prod
+  supabase/migrations/0003_extend_deals_for_mvp.sql  Additive migration actually run against loki-crm-prod
   scripts/migrate-from-json.ts               Historical only - written for the 0001 schema, not the real one
   src/middleware.ts                          Redirects unauthenticated users to /login
   src/lib/
@@ -230,7 +230,7 @@ Verified so far: typecheck, lint, and production build all pass; the
 originally placed at the project root, where Next.js silently ignores it
 given this project's `src/` layout; moved during this work). Not yet
 verified: a real magic-link sign-in and the RLS policies under an
-authenticated session (blocked on the `anon` key and the 0002 migration
+authenticated session (blocked on the `anon` key and the 0003 migration
 being applied) — the `handle_new_user`-equivalent trigger, the RLS
 policies as written, and the
 magic-link redirect flow end to end.
