@@ -29,14 +29,20 @@ were reconciled.
 This app targets the existing **loki-crm-prod** project — there is no
 fresh Supabase project to create.
 
-1. **Apply the additive migration**: in the `loki-crm-prod` Supabase SQL
-   editor, run `supabase/migrations/0003_extend_deals_for_mvp.sql`. It only
-   adds nullable columns to `deals` (never touches existing data) to cover
-   MVP fields the original prod schema didn't have yet (niveau d'intérêt,
-   évaluation client, dates par étape, contrat, véhicule d'échange). See
-   that file's header comment for the full list.
+1. **Apply the two migrations** in the `loki-crm-prod` Supabase SQL editor:
+   - `supabase/migrations/0003_extend_deals_for_mvp.sql` — adds nullable
+     columns to `deals` (never touches existing data) to cover MVP fields
+     the original prod schema didn't have yet (niveau d'intérêt, évaluation
+     client, dates par étape, contrat, véhicule d'échange). See that file's
+     header comment for the full list.
+   - `supabase/migrations/0004_grant_authenticated_privileges.sql` — the
+     `authenticated` role had RLS policies but no base table `GRANT`s, so
+     every signed-in query fails with `permission denied for table X` until
+     this runs. See that file's header comment for how this was diagnosed.
+
    `supabase/migrations/0001_init.sql` is kept only as historical
    documentation of the scaffold's original (never-deployed) schema design
+   — not run against `loki-crm-prod`.
    — it is not run against `loki-crm-prod`.
 2. **Confirm the auth bootstrap trigger**: `loki-crm-prod` already has an
    `on_auth_user_created` trigger on `auth.users` that creates a
