@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Bus } from "lucide-react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
 
@@ -39,11 +39,17 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Bus size={28} className="text-teal" strokeWidth={1.75} />
-          <span className="text-2xl font-semibold tracking-tight text-text">
-            LOKI <span className="text-teal">Coach</span>
-          </span>
+        <div className="flex items-center justify-center mb-8">
+          <div className="bg-onyx rounded-lg px-4 py-2 inline-flex items-center">
+            <Image
+              src="/loki-coach-logo.png"
+              alt="LOKI Coach"
+              width={1541}
+              height={68}
+              priority
+              className="h-7 sm:h-8 w-auto"
+            />
+          </div>
         </div>
 
         <div className="bg-surface border border-border/15 rounded-2xl p-6 shadow-sm">
