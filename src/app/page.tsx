@@ -19,6 +19,7 @@ import {
   updateDealRow,
 } from "@/lib/data";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
+import { getErrorMessage } from "@/lib/format";
 import { DealCard } from "@/components/DealCard";
 import { DealDrawer } from "@/components/DealDrawer";
 import { FollowUpsView } from "@/components/FollowUpsView";
@@ -70,7 +71,7 @@ export default function DashboardPage() {
       setStages(stageRows);
       setCoaches(coachRows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de chargement.");
+      setError(getErrorMessage(err, "Erreur de chargement."));
     } finally {
       setLoading(false);
     }
@@ -169,7 +170,7 @@ export default function DashboardPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'exportation.");
+      setError(getErrorMessage(err, "Erreur lors de l'exportation."));
     }
   }
 

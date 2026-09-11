@@ -7,6 +7,7 @@ import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS, SOURCE_SUGGESTIONS } from "@/lib/domain";
+import { getErrorMessage } from "@/lib/format";
 import type { Deal, DealWithContact, NewContact, Profile } from "@/lib/types";
 
 interface NewDealModalProps {
@@ -88,7 +89,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
       setDraft(emptyDraft);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la création du dossier.");
+      setError(getErrorMessage(err, "Erreur lors de la création du dossier."));
     } finally {
       setSubmitting(false);
     }

@@ -59,3 +59,20 @@ export function isOverdue(value: string | null | undefined): boolean {
   if (Number.isNaN(d.getTime())) return false;
   return d.getTime() < Date.now();
 }
+
+/**
+ * Extracts a human-readable message from a caught error. Supabase's
+ * PostgrestError/AuthError objects carry a real `.message` (e.g.
+ * "permission denied for table deals") but are not always `instanceof
+ * Error`, so `err instanceof Error ? err.message : fallback` silently
+ * discards the actual server error and shows only the generic fallback -
+ * exactly what hid the missing-GRANT bug behind "Erreur de chargement."
+ * Falls back to `fallback` only when nothing usable is found.
+ */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string") {
+    return (err as { message: string }).message;
+  }
+  return fallback;
+}

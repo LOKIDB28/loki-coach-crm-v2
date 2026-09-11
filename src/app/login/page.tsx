@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Bus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/format";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -31,7 +32,7 @@ export default function LoginPage() {
       setStatus("sent");
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setErrorMessage(getErrorMessage(err, "Une erreur est survenue."));
     }
   }
 
