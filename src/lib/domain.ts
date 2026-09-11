@@ -1,49 +1,48 @@
-// Domain constants and pure business logic, ported as-is from the legacy
-// loki-coach-crm.jsx prototype (STAGES, PROVENANCES, INTERETS, EVALUATIONS,
-// ACCIDENT_OPTIONS, fullName, findClientMatches, findCoachMatches). Field
-// names below are camelCase to match the prototype's matching functions;
-// callers pass in objects with those camelCase keys (see the `Candidate`
-// type), independent of the snake_case Supabase column names in types.ts.
+// Domain constants and pure business logic. Pipeline stages themselves are
+// data now (public.pipeline_stages, fetched live - no hardcoded rep list or
+// stage list anywhere, matching the "no hardcoded arrays" principle from the
+// README). This module only holds the bits that are genuinely static: which
+// icon represents which stage code, the option lists for fields that are
+// still free text in the real schema, and the ported duplicate-detection
+// logic (findClientMatches / findCoachMatches from the legacy prototype),
+// adapted to the contact+deal split.
 import {
   User,
-  CalendarClock,
-  Factory,
+  Phone,
+  Users,
   FileText,
-  FileSignature,
-  Wrench,
+  Handshake,
+  CheckCircle2,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
-import type { ActivityType, Client } from "./types";
+import type { Contact, Deal, DealWithContact } from "./types";
 
-export interface Stage {
-  id: number;
-  code: string;
-  label: string;
-  icon: LucideIcon;
+/** Icon per pipeline_stages.code - extend when a new stage code is added in Supabase. */
+export const STAGE_ICONS: Record<string, LucideIcon> = {
+  prospect: User,
+  contact: Phone,
+  rencontre: Users,
+  proposition: FileText,
+  negociation: Handshake,
+  gagne: CheckCircle2,
+  perdu: XCircle,
+};
+
+export function stageIcon(code: string): LucideIcon {
+  return STAGE_ICONS[code] ?? FileText;
 }
 
-export const STAGES: Stage[] = [
-  { id: 1, code: "01", label: "Premier contact", icon: User },
-  { id: 2, code: "02", label: "Suivi", icon: CalendarClock },
-  { id: 3, code: "03", label: "Usine & essai", icon: Factory },
-  { id: 4, code: "04", label: "Proposition", icon: FileText },
-  { id: 5, code: "05", label: "Contrat", icon: FileSignature },
-  { id: 6, code: "06", label: "1er service", icon: Wrench },
-];
-
-export function stageById(id: number | null | undefined): Stage | undefined {
-  return STAGES.find((s) => s.id === id);
-}
-
-export const PROVENANCES = [
+/** Suggested values for the free-text contacts.source field - not DB-enforced. */
+export const SOURCE_SUGGESTIONS = [
   "Site web",
   "Salon / Exposition",
   "Référence client",
   "Réseaux sociaux",
+  "Facebook",
   "Concessionnaire",
   "Publicité",
   "Événement sportif",
-  "Autre",
 ] as const;
 
 export interface Interet {
@@ -52,14 +51,14 @@ export interface Interet {
 }
 
 export const INTERETS: Interet[] = [
-  { v: "Faible", c: "#8A7E68" },
-  { v: "Moyen", c: "#C6A15B" },
-  { v: "Élevé", c: "#B8874A" },
-  { v: "Très élevé", c: "#9B5A3A" },
+  { v: "Faible", c: "#6B7280" },
+  { v: "Moyen", c: "#00A660" },
+  { v: "Élevé", c: "#00A660" },
+  { v: "Très élevé", c: "#A6FA30" },
 ];
 
 export function interetColor(v: string | null | undefined): string {
-  return INTERETS.find((i) => i.v === v)?.c ?? "#736A58";
+  return INTERETS.find((i) => i.v === v)?.c ?? "#6B7280";
 }
 
 export const EVALUATIONS = [
@@ -71,33 +70,9 @@ export const EVALUATIONS = [
 
 export const ACCIDENT_OPTIONS = ["Non accidenté", "Accidenté", "Inconnu"] as const;
 
-/** Labels for public.activities.type, keyed for use throughout the UI. */
-export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
-  note_premier_contact: "Note — Premier contact",
-  note_suivi: "Note — Suivi",
-  note_visite: "Note — Usine & essai",
-  note_proposition: "Note — Proposition",
-  note_contrat: "Note — Contrat",
-  note_service: "Note — 1er service",
-  changement_etape: "Changement d'étape",
-  autre: "Autre",
-};
-
-/** Maps a pipeline stage id to the activity type used for a note logged from that stage's section. */
-export const STAGE_NOTE_TYPE: Record<number, ActivityType> = {
-  1: "note_premier_contact",
-  2: "note_suivi",
-  3: "note_visite",
-  4: "note_proposition",
-  5: "note_contrat",
-  6: "note_service",
-};
-
 /**
  * Minimal shape the duplicate-detection helpers need. Deliberately
- * camelCase (prenom/nom/telephone/email/coachNeufVise/coachUnite) to match
- * the prototype's original field names - components pass in a client (or
- * new-client form draft) mapped to this shape.
+ * camelCase to match the prototype's original field names.
  */
 export interface DupeCandidate {
   id?: string;
@@ -109,23 +84,7 @@ export interface DupeCandidate {
   coachUnite?: string | null;
 }
 
-/**
- * Bridges the snake_case Supabase row shape (Client/NewClient) to the
- * camelCase DupeCandidate shape the ported matching functions expect.
- */
-export function toDupeCandidate(c: Partial<Client>): DupeCandidate {
-  return {
-    id: c.id,
-    prenom: c.prenom,
-    nom: c.nom,
-    telephone: c.telephone,
-    email: c.email,
-    coachNeufVise: c.coach_neuf_vise,
-    coachUnite: c.coach_unite,
-  };
-}
-
-export function fullName(c: DupeCandidate): string {
+export function fullName(c: { prenom?: string | null; nom?: string | null }): string {
   return `${(c.prenom || "").trim()} ${(c.nom || "").trim()}`.trim();
 }
 
@@ -136,14 +95,14 @@ export function fullName(c: DupeCandidate): string {
  */
 export function findClientMatches<T extends DupeCandidate>(
   candidate: DupeCandidate,
-  clients: T[],
+  pool: T[],
   excludeId?: string
 ): T[] {
   const phone = (candidate.telephone || "").trim().toLowerCase();
   const email = (candidate.email || "").trim().toLowerCase();
   const name = fullName(candidate).toLowerCase();
   if (!phone && !email && !name) return [];
-  return clients.filter((c) => {
+  return pool.filter((c) => {
     if (excludeId && c.id === excludeId) return false;
     const cPhone = (c.telephone || "").trim().toLowerCase();
     const cEmail = (c.email || "").trim().toLowerCase();
@@ -163,13 +122,13 @@ export function findClientMatches<T extends DupeCandidate>(
  */
 export function findCoachMatches<T extends DupeCandidate>(
   candidate: DupeCandidate,
-  clients: T[],
+  pool: T[],
   excludeId?: string
 ): T[] {
   const coach = (candidate.coachNeufVise || "").trim().toLowerCase();
   const unit = (candidate.coachUnite || "").trim().toLowerCase();
   if (!coach && !unit) return [];
-  return clients.filter((c) => {
+  return pool.filter((c) => {
     if (excludeId && c.id === excludeId) return false;
     const cCoach = (c.coachNeufVise || "").trim().toLowerCase();
     const cUnit = (c.coachUnite || "").trim().toLowerCase();
@@ -177,29 +136,44 @@ export function findCoachMatches<T extends DupeCandidate>(
   });
 }
 
-/**
- * Convenience wrappers for the common case in this app: candidate and pool
- * are Supabase Client rows (snake_case). Maps to DupeCandidate under the
- * hood and returns the matching full Client rows.
- */
-export function findClientMatchesForClient(
-  candidate: Partial<Client>,
-  clients: Client[],
-  excludeId?: string
-): Client[] {
-  const candidateDupe = toDupeCandidate(candidate);
-  const pool = clients.map((c) => ({ ...toDupeCandidate(c), _ref: c }));
-  const matches = findClientMatches(candidateDupe, pool, excludeId);
-  return matches.map((m) => m._ref);
+function toDupeCandidate(d: {
+  id?: string;
+  contact?: Pick<Contact, "prenom" | "nom" | "telephone" | "email"> | null;
+  prenom?: string | null;
+  nom?: string | null;
+  telephone?: string | null;
+  email?: string | null;
+  coach_neuf_vise?: string | null;
+  coach_unite?: string | null;
+}): DupeCandidate {
+  return {
+    id: d.id,
+    prenom: d.contact?.prenom ?? d.prenom,
+    nom: d.contact?.nom ?? d.nom,
+    telephone: d.contact?.telephone ?? d.telephone,
+    email: d.contact?.email ?? d.email,
+    coachNeufVise: d.coach_neuf_vise,
+    coachUnite: d.coach_unite,
+  };
 }
 
-export function findCoachMatchesForClient(
-  candidate: Partial<Client>,
-  clients: Client[],
+/** Convenience wrapper: candidate and pool are deal-with-contact rows, as loaded for the dashboard. */
+export function findClientMatchesForDeal(
+  candidate: DealWithContact | (Partial<Deal> & { contact: Pick<Contact, "prenom" | "nom" | "telephone" | "email"> }),
+  deals: DealWithContact[],
   excludeId?: string
-): Client[] {
+): DealWithContact[] {
   const candidateDupe = toDupeCandidate(candidate);
-  const pool = clients.map((c) => ({ ...toDupeCandidate(c), _ref: c }));
-  const matches = findCoachMatches(candidateDupe, pool, excludeId);
-  return matches.map((m) => m._ref);
+  const pool = deals.map((d) => ({ ...toDupeCandidate(d), _ref: d }));
+  return findClientMatches(candidateDupe, pool, excludeId).map((m) => m._ref);
+}
+
+export function findCoachMatchesForDeal(
+  candidate: Pick<Deal, "coach_neuf_vise" | "coach_unite"> & { id?: string },
+  deals: DealWithContact[],
+  excludeId?: string
+): DealWithContact[] {
+  const candidateDupe = toDupeCandidate(candidate);
+  const pool = deals.map((d) => ({ ...toDupeCandidate(d), _ref: d }));
+  return findCoachMatches(candidateDupe, pool, excludeId).map((m) => m._ref);
 }

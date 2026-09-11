@@ -69,7 +69,7 @@ export function CurrencyInput({
             onChange(Number.isFinite(n) ? n : null);
           }
         }}
-        className={`w-full rounded-md bg-surface2 border border-border pl-7 pr-3 py-2 text-sm text-text placeholder:text-textFaint focus:outline-none focus:border-brass transition-colors ${className}`}
+        className={`w-full rounded-lg bg-surface2 border border-border/20 pl-7 pr-3 py-2 text-sm text-text placeholder:text-textSoft/60 focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-colors ${className}`}
       />
     </div>
   );

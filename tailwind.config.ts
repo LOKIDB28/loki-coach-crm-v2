@@ -1,8 +1,12 @@
 import type { Config } from "tailwindcss";
 
-// Colors ported 1:1 from the original prototype's COLORS object (loki-coach-crm.jsx).
-// Keep these in sync with src/lib/theme.ts.
+// Semantic tokens resolve to CSS custom properties (see globals.css) so the
+// same class names (bg-surface, text-text, border-border, …) work in both
+// light and dark automatically via prefers-color-scheme. Brand colors
+// (teal/onyx/paper/paperDim/stone/green) are the fixed palette; keep them in
+// sync with src/lib/theme.ts.
 const config: Config = {
+  darkMode: "media",
   content: [
     "./src/app/**/*.{ts,tsx}",
     "./src/components/**/*.{ts,tsx}",
@@ -11,19 +15,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#15120E",
-        surface: "#1F1B15",
-        surface2: "#28221A",
-        border: "#3A3226",
-        brass: "#C6A15B",
-        brassSoft: "#E4C989",
-        text: "#F3EFE6",
-        textSoft: "#A79C89",
-        textFaint: "#736A58",
+        teal: "#00A660",
+        onyx: "#111111",
+        paper: "#FFFFFF",
+        paperDim: "#F9F9F9",
+        stone: "#6B7280",
+        green: "#A6FA30",
+
+        bg: "rgb(var(--bg) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        surface2: "rgb(var(--surface-2) / <alpha-value>)",
+        border: "rgb(var(--border) / <alpha-value>)",
+        text: "rgb(var(--text) / <alpha-value>)",
+        textSoft: "rgb(var(--text-soft) / <alpha-value>)",
       },
       fontFamily: {
-        condensed: ["Barlow Condensed", "sans-serif"],
-        body: ["Inter", "sans-serif"],
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'SF Pro Text'",
+          "'Segoe UI'",
+          "Roboto",
+          "sans-serif",
+        ],
       },
     },
   },

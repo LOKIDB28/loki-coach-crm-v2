@@ -39,33 +39,27 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-8">
-          <Bus size={28} className="text-brass" strokeWidth={1.75} />
-          <span className="font-heading text-2xl uppercase tracking-widest text-text">
-            LOKI <span className="text-brass">Coach</span>
+          <Bus size={28} className="text-teal" strokeWidth={1.75} />
+          <span className="text-2xl font-semibold tracking-tight text-text">
+            LOKI <span className="text-teal">Coach</span>
           </span>
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-6">
-          <h1 className="font-heading text-lg uppercase tracking-wide text-text mb-1">
-            Connexion
-          </h1>
+        <div className="bg-surface border border-border/15 rounded-2xl p-6 shadow-sm">
+          <h1 className="text-lg font-semibold text-text mb-1">Connexion</h1>
           <p className="text-sm text-textSoft mb-5">
-            Entrez votre courriel professionnel. Un lien de connexion sans mot de
-            passe vous sera envoyé.
+            Entrez votre courriel professionnel. Un lien de connexion sans mot de passe vous sera envoyé.
           </p>
 
           {status === "sent" ? (
-            <div className="rounded-md border border-brass/40 bg-brass/10 px-4 py-3 text-sm text-brassSoft">
-              Un lien de connexion a été envoyé à <strong>{email}</strong>. Vérifiez
-              votre boîte de réception (et vos courriels indésirables).
+            <div className="rounded-xl border border-teal/30 bg-teal/10 px-4 py-3 text-sm text-teal">
+              Un lien de connexion a été envoyé à <strong>{email}</strong>. Vérifiez votre boîte de réception (et vos
+              courriels indésirables).
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label
-                  htmlFor="email"
-                  className="block text-xs font-heading uppercase tracking-wide text-textSoft mb-1"
-                >
+                <label htmlFor="email" className="block text-[13px] font-medium text-textSoft mb-1">
                   Courriel
                 </label>
                 <input
@@ -76,18 +70,16 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="prenom.nom@lokicoach.com"
-                  className="w-full rounded-md bg-surface2 border border-border px-3 py-2 text-sm text-text placeholder:text-textFaint focus:outline-none focus:border-brass"
+                  className="w-full rounded-lg bg-surface2 border border-border/20 px-3 py-2 text-sm text-text placeholder:text-textSoft/60 focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/20"
                 />
               </div>
 
-              {status === "error" && errorMessage && (
-                <p className="text-sm text-red-400">{errorMessage}</p>
-              )}
+              {status === "error" && errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
 
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="w-full rounded-md bg-brass text-bg font-heading uppercase tracking-wide text-sm py-2 hover:bg-brassSoft transition-colors disabled:opacity-60"
+                className="w-full rounded-lg bg-teal text-white font-medium text-sm py-2.5 hover:bg-teal/90 transition-colors disabled:opacity-60"
               >
                 {status === "sending" ? "Envoi en cours…" : "Recevoir le lien"}
               </button>
@@ -95,9 +87,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-textFaint mt-6">
-          Accès réservé à l&apos;équipe LOKI Coach.
-        </p>
+        <p className="text-center text-xs text-textSoft mt-6">Accès réservé à l&apos;équipe LOKI Coach.</p>
       </div>
     </main>
   );

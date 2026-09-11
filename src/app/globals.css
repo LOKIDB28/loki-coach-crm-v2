@@ -2,23 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Semantic tokens as RGB triples (for Tailwind's rgb(var(--x) / <alpha>)
+ * opacity support). Brand hexes: teal #00A660, onyx #111111, paper #FFFFFF,
+ * paperDim #F9F9F9, stone #6B7280, green #A6FA30 - see src/lib/theme.ts.
+ *
+ * Light is the default (paper cards on a paperDim page, onyx text). Dark
+ * flips to an onyx page - surface/surface2 there are onyx tinted a few
+ * percent toward paper for elevation (not new brand hues, just tonal steps
+ * of the two neutrals already in the palette, since flat onyx-on-onyx cards
+ * would have zero contrast against the page).
+ */
+:root {
+  --bg: 249 249 249; /* paperDim */
+  --surface: 255 255 255; /* paper */
+  --surface-2: 249 249 249; /* paperDim */
+  --border: 107 114 128; /* stone, used at low alpha */
+  --text: 17 17 17; /* onyx */
+  --text-soft: 107 114 128; /* stone */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 17 17 17; /* onyx */
+    --surface: 27 27 27; /* onyx + ~6% paper, for elevation */
+    --surface-2: 34 34 34; /* onyx + ~9% paper */
+    --border: 255 255 255; /* paper, used at low alpha */
+    --text: 249 249 249; /* paperDim */
+    --text-soft: 156 163 175; /* stone, lightened for AA contrast on dark */
+  }
+}
+
 html,
 body {
-  background-color: #15120e;
-  color: #f3efe6;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-heading {
-  font-family: "Barlow Condensed", sans-serif;
-}
-
-/* Thin brass-tinted scrollbars to match the dark theme, WebKit + Firefox. */
 * {
-  scrollbar-color: #3a3226 #1f1b15;
+  scrollbar-color: rgb(var(--border) / 0.4) transparent;
   scrollbar-width: thin;
 }
 
@@ -27,21 +54,26 @@ body {
   height: 10px;
 }
 
-*::-webkit-scrollbar-track {
-  background: #1f1b15;
-}
-
 *::-webkit-scrollbar-thumb {
-  background: #3a3226;
+  background: rgb(var(--border) / 0.4);
   border-radius: 6px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #4a4030;
+  background: rgb(var(--border) / 0.6);
 }
 
-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7) sepia(1) saturate(2) hue-rotate(10deg);
-  cursor: pointer;
+/* Instant press feedback, no wait for click/touch-up. */
+button:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active {
+    transform: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

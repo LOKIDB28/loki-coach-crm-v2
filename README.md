@@ -5,9 +5,17 @@ Prévost motorcoaches, Quebec) as a real Next.js + Supabase application,
 replacing the React prototype that ran on an ephemeral shared key-value
 store with no real authentication.
 
-Same pipeline, same fields, same dark-brass look and French Québécois
-labels as the prototype — now backed by Postgres, real auth, and Row Level
-Security, deployable to Vercel.
+Same pipeline concepts and French Québécois labels as the prototype — now
+backed by a real production Postgres project (**loki-crm-prod**, ref
+`lxujdwlhcsgfsvqrtgfq`, `ca-central-1`), real auth, and Row Level Security,
+deployable to Vercel. A clean, Apple-inspired visual design replaces the
+prototype's original dark-brass look (see "Design" below).
+
+**This app is connected to a pre-existing production project, not a fresh
+one.** `loki-crm-prod` already held 364 contacts / 369 deals with its own
+schema (a proper `contacts`/`deals` split, `pipeline_stages`, `coaches`,
+`tasks`) before this codebase existed — see "Data model" for how the two
+were reconciled.
 
 ## Stack
 
@@ -18,39 +26,70 @@ Security, deployable to Vercel.
 
 ## Getting started
 
-1. **Create a Supabase project** at [supabase.com](https://supabase.com).
-2. **Run the migration**: in the Supabase SQL editor, paste and run
-   `supabase/migrations/0001_init.sql`. This creates the `profiles`,
-   `clients`, and `activities` tables, all RLS policies, and the trigger
-   that auto-creates a `profiles` row when someone signs in for the first
-   time.
+This app targets the existing **loki-crm-prod** project — there is no
+fresh Supabase project to create.
+
+1. **Apply the additive migration**: in the `loki-crm-prod` Supabase SQL
+   editor, run `supabase/migrations/0002_extend_deals_for_mvp.sql`. It only
+   adds nullable columns to `deals` (never touches existing data) to cover
+   MVP fields the original prod schema didn't have yet (niveau d'intérêt,
+   évaluation client, dates par étape, contrat, véhicule d'échange). See
+   that file's header comment for the full list.
+   `supabase/migrations/0001_init.sql` is kept only as historical
+   documentation of the scaffold's original (never-deployed) schema design
+   — it is not run against `loki-crm-prod`.
+2. **Confirm the auth bootstrap trigger**: `loki-crm-prod` already has an
+   `on_auth_user_created` trigger on `auth.users` that creates a
+   `public.profiles` row (`role = 'internal'`) on first sign-in — verify it
+   still exists before onboarding the team (`select tgname from pg_trigger
+   where tgname = 'on_auth_user_created'` in the SQL editor).
 3. **Enable email (magic link) auth**: in Supabase Dashboard → Authentication
    → Providers, make sure Email is enabled. Under Authentication → URL
    Configuration, add your local dev URL (`http://localhost:3000/auth/callback`)
    and your production URL (`https://your-app.vercel.app/auth/callback`) as
    Redirect URLs.
-4. **Invite the team**: the four accounts (Jeff, Pierre-Mathieu, Frederick,
-   LP) each sign in once via the `/login` page with their email — this
-   auto-creates their `profiles` row via the trigger. Afterwards, open
-   Supabase → Table editor → `profiles` and set each person's `nom` to
-   their display name (e.g. "Jeff Gagné") so it renders correctly in the
-   representative tabs and dropdowns instead of falling back to their
-   email's local part.
-5. **Copy env vars**: `cp .env.local.example .env.local` and fill in
-   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from
-   Project Settings → API. (`SUPABASE_SERVICE_ROLE_KEY` is only needed for
-   the one-time migration script below — never expose it to the browser.)
+4. **Invite the team**: the team's accounts each sign in once via the
+   `/login` page with their email — this auto-creates their `profiles` row
+   via the trigger. Afterwards, open Supabase → Table editor → `profiles`
+   and set each person's `nom` to their display name (e.g. "Jeff Gagné") so
+   it renders correctly in the representative tabs and dropdowns instead of
+   falling back to their email's local part.
+5. **Copy env vars**: `.env.local` is already set up with
+   `NEXT_PUBLIC_SUPABASE_URL` pointing at `loki-crm-prod`
+   (`https://lxujdwlhcsgfsvqrtgfq.supabase.co`) — fill in
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` from that project's Project Settings →
+   API → Project API keys → `anon` `public`.
 6. **Install and run**:
    ```bash
    npm install
    npm run dev
    ```
    Visit `http://localhost:3000`, sign in with a magic link, and you're in.
-7. **Deploy to Vercel**: import the repo, set the same three env vars in
-   the Vercel project settings (skip the service role key unless you plan
-   to run the migration script from a Vercel-adjacent environment), and
-   deploy. Add the deployed URL's `/auth/callback` to Supabase's redirect
-   URL allow-list.
+7. **Deploy to Vercel**: import the repo, set the same two `NEXT_PUBLIC_*`
+   env vars in the Vercel project settings, and deploy. Add the deployed
+   URL's `/auth/callback` to `loki-crm-prod`'s redirect URL allow-list.
+
+**Note on `scripts/migrate-from-json.ts`**: this one-time cutover script
+was written against the scaffold's original single-table `clients` schema
+and has not been updated for the real `contacts`/`deals` split — the actual
+cutover from the legacy prototype into `loki-crm-prod` (364 contacts, 369
+deals) already happened through a separate process before this codebase
+was connected to it. Treat this script as historical/unused rather than
+running it again.
+
+## Design
+
+Apple-inspired clean visual language (see `src/lib/theme.ts` and
+`tailwind.config.ts`), light by default with an automatic dark mode via
+`prefers-color-scheme`. Fixed brand palette — do not introduce other hues:
+
+- **Vivid Teal `#00A660`** — accent principal, boutons, liens actifs
+- **Onyx `#111111`** — texte / fond sombre (dark mode)
+- **Paper White `#FFFFFF` / `#F9F9F9`** — cartes, fond clair
+- **Stone Gray `#6B7280`** — texte secondaire
+- **Vivid Green `#A6FA30`** — accent rare (alertes positives) — parcimonie
+
+System font stack (no web font load), per Apple's own typography guidance.
 
 ## One-time data migration from the prototype
 
@@ -91,41 +130,56 @@ every activity), per the migration mandate.
 
 ## Data model
 
-Three tables (see `supabase/migrations/0001_init.sql` for the authoritative
-definition):
+`loki-crm-prod`'s real schema, extended by
+`supabase/migrations/0002_extend_deals_for_mvp.sql` (see that file's header
+for the exact list of added columns):
 
-- **`profiles`** — one row per team member (Supabase Auth user). Replaces
-  the prototype's hardcoded `REPRESENTANTS` array: any client's
-  `owner_id` can be assigned to any profile via a live dropdown.
-- **`clients`** — the pipeline itself: contact info, stage (1–6), and the
-  per-stage structured fields (provenance, coach targeted, trade-in
-  vehicle, pricing, contract, service appointment, etc). Mirrors the
-  prototype's `emptyClient()` shape, translated to snake_case.
-- **`activities`** — an append-only note/history feed per client. Replaces
-  the prototype's six free-text note fields (one per stage) with proper
-  rows: `note_premier_contact`, `note_suivi`, `note_visite`,
-  `note_proposition`, `note_contrat`, `note_service`, plus
-  `changement_etape` (auto-logged on every stage change) and `autre`.
-  Notes are never edited or deleted in place — a correction is a new row,
-  so the feed is a true, tamper-evident history of the deal.
+- **`profiles`** — one row per team member (Supabase Auth user), with a
+  `role` (`admin`/`internal`/`client`) checked by the `is_internal()` RLS
+  helper. Bootstrapped by the `on_auth_user_created` trigger on first
+  sign-in. Replaces the prototype's hardcoded `REPRESENTANTS` array.
+- **`contacts`** — the person/company: name, phone, email, address, source,
+  canal. A contact can have more than one `deal` over time (the prototype's
+  single-table model assumed one-to-one).
+- **`deals`** — the pipeline itself: `contact_id`, `stage_id` (→
+  `pipeline_stages`), `owner_id`, amounts, and the per-stage structured
+  fields added by the 0002 migration (provenance/intérêt now live on the
+  contact or deal — see the migration file). Mirrors the prototype's
+  `emptyClient()` shape as closely as the real schema allows.
+- **`pipeline_stages`** — 7 stages (`prospect`, `contact`, `rencontre`,
+  `proposition`, `negociation`, `gagne`, `perdu`), each with a `label` and a
+  `probability` — a real lookup table, not a hardcoded array. The
+  prototype's 6-stage model maps onto this with `gagne`/`perdu` as the two
+  closed states.
+- **`coaches`** — real vehicle inventory (`unit_number`, `statut`), linked
+  from `deals.coach_id`. Not managed by this app (no create/edit UI) — only
+  surfaced as a read-only picker on a deal.
+- **`activities`** — an append-only note/history feed, linked to a
+  `contact_id` and/or `deal_id`. Types are channel-based (`note`, `appel`,
+  `courriel`, `texto`, `rencontre`, `changement_etape`, `autre`) rather than
+  per-stage as in the original scaffold design — notes added from the deal
+  drawer use `type = 'note'`. `changement_etape` rows are auto-inserted by
+  a `deals_log_stage` DB trigger, not by the app.
+- **`tasks`**, **`staging_import`** — exist in `loki-crm-prod` but are not
+  used by this app (no UI reads or writes them).
 
-**Row Level Security**: every authenticated user can read and write every
-row in `clients` and `activities` — this intentionally matches the
-prototype's current no-restriction, whole-team-sees-everything behavior.
-`profiles` rows are readable by everyone (needed for dropdowns/authorship)
-but only editable by their own owner.
+**Row Level Security**: every authenticated internal user (`is_internal()`)
+can read and write `contacts`/`deals`/`activities` — matching the
+prototype's whole-team-sees-everything behavior. `profiles` are readable by
+everyone internal but only editable by their own owner.
 
 ## Functional coverage (MVP scope)
 
-- Full CRUD on clients/prospects, all fields from the prototype.
-- The same 6-stage pipeline bar (counts per stage, click to filter) and a
-  stage stepper in the client detail drawer.
-- Chronological, newest-first activity feed per client (notes + stage
+- Full CRUD on contacts/deals, all fields from the prototype (reconciled
+  against the real schema — see "Data model").
+- Pipeline bar (counts per stage, click to filter, live from
+  `pipeline_stages`) and a stage stepper in the deal detail drawer.
+- Chronological, newest-first activity feed per deal (notes + stage
   changes), with author and timestamp.
-- "Suivis à faire" tab: clients with a follow-up date, sorted soonest
+- "Suivis à faire" tab: deals with a `next_action_at`, sorted soonest
   first, with a red/warning treatment on anything overdue.
-- `owner_id` assignable to any team member via a dropdown sourced from
-  `profiles` — no hardcoded rep list anywhere.
+- `owner_id` (on the deal) assignable to any team member via a dropdown
+  sourced from `profiles` — no hardcoded rep list anywhere.
 - Duplicate detection ported byte-for-byte in logic from the prototype's
   `findClientMatches` / `findCoachMatches`: exact case-insensitive match on
   phone/email/full name flags the same person entered twice; exact
@@ -135,31 +189,32 @@ but only editable by their own owner.
   drawer.
 - Recap table (owner × niveau d'intérêt, with totals), computed live from
   whatever's currently loaded.
-- Standing JSON export of all clients + all activities (permanent backup
-  feature, not a one-time migration tool).
+- Standing JSON export of all contacts + deals + activities (permanent
+  backup feature, not a one-time migration tool).
 
 **Explicitly out of scope for this MVP** (per the mandate — do not add):
 per-rep row-level restrictions, multi-role permissions, email/SMS
 automation, a native mobile app or PWA install flow, BI beyond the recap
-table, multi-tenancy, and a recurring "Import" UI (only the one-time
-script above).
+table, multi-tenancy, coach-inventory management UI, and a recurring
+"Import" UI.
 
 ## Project structure
 
 ```
 loki-coach-crm-v2/
-  supabase/migrations/0001_init.sql   Full schema + RLS + auth trigger
-  scripts/migrate-from-json.ts        One-time cutover script (see above)
-  middleware.ts                       Redirects unauthenticated users to /login
+  supabase/migrations/0001_init.sql          Historical only - scaffold's original schema, never run
+  supabase/migrations/0002_extend_deals_for_mvp.sql  Additive migration actually run against loki-crm-prod
+  scripts/migrate-from-json.ts               Historical only - written for the 0001 schema, not the real one
+  src/middleware.ts                          Redirects unauthenticated users to /login
   src/lib/
     supabase/client.ts                Browser Supabase client
     supabase/server.ts                Server Component / Route Handler client
-    theme.ts                          COLORS + font stack, ported from the prototype
-    domain.ts                         STAGES/PROVENANCES/INTERETS/etc + dupe-detection logic
+    theme.ts                          Brand palette + font stack
+    domain.ts                         Stage icons, option lists, dupe-detection logic
     format.ts                         fr-CA date/currency formatting helpers
     data.ts                           Supabase query/mutation functions
-    types.ts                          Hand-written types matching the schema
-  src/components/                     ClientCard, PipelineBar, ClientDrawer, etc.
+    types.ts                          Hand-written types matching the real schema
+  src/components/                     DealCard, DealDrawer, NewDealModal, PipelineBar, etc.
   src/components/ui/                  Field, TextInput, TextArea, Select, CurrencyInput
   src/app/
     page.tsx                          Main dashboard (client component)
@@ -169,10 +224,13 @@ loki-coach-crm-v2/
 
 ## Known limitations / not verified
 
-There was no live Supabase project available while building this, so the
-code type-checks and the dependency tree resolves, but none of the
-Supabase calls, RLS policies, or the auth flow have been exercised against
-a real backend. Test thoroughly against a real (ideally staging) Supabase
-project before pointing the team at this in production — in particular:
-the `handle_new_user` trigger, the RLS policies as written, and the
+Verified so far: typecheck, lint, and production build all pass; the
+`/login` ↔ `/` auth redirect was exercised end-to-end against
+`loki-crm-prod` (confirming `src/middleware.ts` actually runs — it was
+originally placed at the project root, where Next.js silently ignores it
+given this project's `src/` layout; moved during this work). Not yet
+verified: a real magic-link sign-in and the RLS policies under an
+authenticated session (blocked on the `anon` key and the 0002 migration
+being applied) — the `handle_new_user`-equivalent trigger, the RLS
+policies as written, and the
 magic-link redirect flow end to end.

@@ -1,21 +1,17 @@
-// Ported exactly from the COLORS object in the legacy loki-coach-crm.jsx
-// prototype. Mirrored as Tailwind theme colors in tailwind.config.ts
-// (bg/surface/surface2/border/brass/brassSoft/text/textSoft/textFaint) -
-// use the Tailwind utility classes in components; this object is kept for
-// any spot that needs the raw hex (inline SVG, canvas, charts, etc).
+// Brand palette - the single source of truth for the five approved colors.
+// Mirrored as CSS custom properties in src/app/globals.css and exposed as
+// Tailwind theme colors in tailwind.config.ts; use this object only where a
+// raw hex is unavoidable (inline SVG, canvas, chart libraries).
 export const COLORS = {
-  bg: "#15120E",
-  surface: "#1F1B15",
-  surface2: "#28221A",
-  border: "#3A3226",
-  brass: "#C6A15B",
-  brassSoft: "#E4C989",
-  text: "#F3EFE6",
-  textSoft: "#A79C89",
-  textFaint: "#736A58",
+  teal: "#00A660", // accent principal - boutons, liens actifs
+  onyx: "#111111", // fond sombre
+  paper: "#FFFFFF", // texte clair, cartes
+  paperDim: "#F9F9F9", // cartes/fond secondaire
+  stone: "#6B7280", // texte secondaire
+  green: "#A6FA30", // accent rare - alertes positives, à utiliser avec parcimonie
 } as const;
 
-// Google Fonts stack, loaded via <link> tags in src/app/layout.tsx (Next.js
-// font loading is CSP-friendlier than a raw @import, same visual result).
-export const FONT_HEADING = "'Barlow Condensed', sans-serif";
-export const FONT_BODY = "'Inter', sans-serif";
+// System font stack (San Francisco on Apple platforms, matching system fonts
+// elsewhere) - no web font load, per Apple's own typography guidance.
+export const FONT_SYSTEM =
+  "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";

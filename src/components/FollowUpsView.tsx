@@ -3,28 +3,28 @@
 import { AlertTriangle, CalendarClock } from "lucide-react";
 import { fullName } from "@/lib/domain";
 import { formatDateTime, isOverdue } from "@/lib/format";
-import type { Client, Profile } from "@/lib/types";
+import type { DealWithContact, Profile } from "@/lib/types";
 
 interface FollowUpsViewProps {
-  clients: Client[];
+  deals: DealWithContact[];
   profiles: Profile[];
-  onOpen: (client: Client) => void;
+  onOpen: (deal: DealWithContact) => void;
 }
 
 /**
- * "Suivis à faire": clients with a follow_up_date, sorted ascending, with
- * a visual overdue indicator when the date is in the past.
+ * "Suivis à faire": deals with a next_action_at, sorted ascending, with a
+ * visual overdue indicator when the date is in the past.
  */
-export function FollowUpsView({ clients, profiles, onOpen }: FollowUpsViewProps) {
-  const withFollowUp = clients
-    .filter((c) => !!c.follow_up_date)
-    .sort((a, b) => new Date(a.follow_up_date!).getTime() - new Date(b.follow_up_date!).getTime());
+export function FollowUpsView({ deals, profiles, onOpen }: FollowUpsViewProps) {
+  const withFollowUp = deals
+    .filter((d) => !!d.next_action_at)
+    .sort((a, b) => new Date(a.next_action_at!).getTime() - new Date(b.next_action_at!).getTime());
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
 
   if (withFollowUp.length === 0) {
     return (
-      <div className="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm text-textFaint">
+      <div className="rounded-xl border border-border/15 bg-surface px-4 py-6 text-center text-sm text-textSoft">
         Aucun suivi planifié pour le moment.
       </div>
     );
@@ -32,40 +32,36 @@ export function FollowUpsView({ clients, profiles, onOpen }: FollowUpsViewProps)
 
   return (
     <ul className="space-y-2">
-      {withFollowUp.map((c) => {
-        const overdue = isOverdue(c.follow_up_date);
-        const owner = c.owner_id ? profileById.get(c.owner_id) : null;
+      {withFollowUp.map((d) => {
+        const overdue = isOverdue(d.next_action_at);
+        const owner = d.owner_id ? profileById.get(d.owner_id) : null;
         return (
-          <li key={c.id}>
+          <li key={d.id}>
             <button
               type="button"
-              onClick={() => onOpen(c)}
-              className={`w-full flex items-center gap-3 rounded-md border px-3.5 py-2.5 text-left transition-colors ${
+              onClick={() => onOpen(d)}
+              className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
                 overdue
-                  ? "border-red-700/50 bg-red-900/20 hover:border-red-600"
-                  : "border-border bg-surface hover:border-brass/50"
+                  ? "border-red-400/40 bg-red-500/5 hover:border-red-400/70"
+                  : "border-border/15 bg-surface hover:border-teal/40"
               }`}
             >
               {overdue ? (
-                <AlertTriangle size={16} className="text-red-400 shrink-0" />
+                <AlertTriangle size={16} className="text-red-500 shrink-0" />
               ) : (
-                <CalendarClock size={16} className="text-brass shrink-0" />
+                <CalendarClock size={16} className="text-teal shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <div className="font-heading text-sm text-text truncate">
-                  {fullName({ prenom: c.prenom, nom: c.nom }) || "(sans nom)"}
+                <div className="text-sm font-medium text-text truncate">
+                  {fullName(d.contact) || "(sans nom)"}
                 </div>
-                <div className="text-xs text-textFaint truncate">
+                <div className="text-xs text-textSoft truncate">
                   {owner?.nom || owner?.email || "Non assigné"}
                 </div>
               </div>
-              <span
-                className={`text-xs shrink-0 font-heading tracking-wide ${
-                  overdue ? "text-red-300" : "text-textSoft"
-                }`}
-              >
+              <span className={`text-xs shrink-0 font-medium ${overdue ? "text-red-500" : "text-textSoft"}`}>
                 {overdue ? "EN RETARD · " : ""}
-                {formatDateTime(c.follow_up_date)}
+                {formatDateTime(d.next_action_at)}
               </span>
             </button>
           </li>

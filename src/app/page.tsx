@@ -2,45 +2,31 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bus,
-  CalendarClock,
-  Download,
-  LogOut,
-  Plus,
-  RefreshCw,
-  Search,
-  Table2,
-  X,
-} from "lucide-react";
+import { Bus, CalendarClock, Download, LogOut, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   addActivity,
-  changeClientStage,
-  createClient as createClientRow,
-  deleteClientRow,
-  fetchActivitiesForClient,
-  fetchClients,
+  changeDealStage,
+  createContactAndDeal,
+  deleteDealRow,
+  fetchActivitiesForDeal,
+  fetchCoaches,
+  fetchDeals,
   fetchExportPayload,
+  fetchPipelineStages,
   fetchProfiles,
-  updateClientRow,
+  updateContactRow,
+  updateDealRow,
 } from "@/lib/data";
-import {
-  findClientMatchesForClient,
-  findCoachMatchesForClient,
-  fullName,
-  INTERETS,
-  STAGE_NOTE_TYPE,
-  STAGES,
-} from "@/lib/domain";
-import { ClientCard } from "@/components/ClientCard";
-import { ClientDrawer } from "@/components/ClientDrawer";
+import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
+import { DealCard } from "@/components/DealCard";
+import { DealDrawer } from "@/components/DealDrawer";
 import { FollowUpsView } from "@/components/FollowUpsView";
-import { NewClientModal } from "@/components/NewClientModal";
+import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
 import { RecapTable } from "@/components/RecapTable";
 import { RepresentativeTabs } from "@/components/RepresentativeTabs";
-import type { ActivityWithAuthor, Client, NewClient, Profile } from "@/lib/types";
+import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, NewContact, PipelineStage, Profile } from "@/lib/types";
 
 type ViewMode = "pipeline" | "suivis";
 
@@ -52,8 +38,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [clients, setClients] = useState<Client[]>([]);
+  const [deals, setDeals] = useState<DealWithContact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
 
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [activeOwnerId, setActiveOwnerId] = useState<string | null>(null);
@@ -62,8 +50,8 @@ export default function DashboardPage() {
   const [showRecap, setShowRecap] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
 
-  const [newClientOpen, setNewClientOpen] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [newDealOpen, setNewDealOpen] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityWithAuthor[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
 
@@ -71,12 +59,16 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [clientRows, profileRows] = await Promise.all([
-        fetchClients(supabase),
+      const [dealRows, profileRows, stageRows, coachRows] = await Promise.all([
+        fetchDeals(supabase),
         fetchProfiles(supabase),
+        fetchPipelineStages(supabase),
+        fetchCoaches(supabase),
       ]);
-      setClients(clientRows);
+      setDeals(dealRows);
       setProfiles(profileRows);
+      setStages(stageRows);
+      setCoaches(coachRows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement.");
     } finally {
@@ -89,16 +81,13 @@ export default function DashboardPage() {
     loadAll();
   }, [supabase, loadAll]);
 
-  const selectedClient = useMemo(
-    () => clients.find((c) => c.id === selectedClientId) ?? null,
-    [clients, selectedClientId]
-  );
+  const selectedDeal = useMemo(() => deals.find((d) => d.id === selectedDealId) ?? null, [deals, selectedDealId]);
 
   const loadActivities = useCallback(
-    async (clientId: string) => {
+    async (dealId: string) => {
       setActivitiesLoading(true);
       try {
-        const rows = await fetchActivitiesForClient(supabase, clientId);
+        const rows = await fetchActivitiesForDeal(supabase, dealId);
         setActivities(rows);
       } catch (err) {
         console.error(err);
@@ -109,53 +98,61 @@ export default function DashboardPage() {
     [supabase]
   );
 
-  function openClient(id: string) {
-    setSelectedClientId(id);
+  function openDeal(id: string) {
+    setSelectedDealId(id);
     loadActivities(id);
   }
 
-  async function handleCreateClient(input: NewClient, initialNote: string) {
-    const created = await createClientRow(supabase, input);
+  async function handleCreateDeal(contactInput: NewContact, dealInput: Partial<Deal>, initialNote: string) {
+    const firstStage = stages.find((s) => s.code === "prospect") ?? stages[0];
+    if (!firstStage) throw new Error("Aucune étape de pipeline configurée.");
+    const created = await createContactAndDeal(supabase, contactInput, dealInput, firstStage.id);
     if (initialNote) {
       await addActivity(supabase, {
-        clientId: created.id,
-        type: "note_premier_contact",
+        dealId: created.id,
+        contactId: created.contact_id,
         contenu: initialNote,
         createdBy: userId,
       });
     }
-    setClients((prev) => [created, ...prev]);
+    setDeals((prev) => [created, ...prev]);
   }
 
-  async function handleUpdateSelected(patch: Partial<Client>) {
-    if (!selectedClient) return;
-    const updated = await updateClientRow(supabase, selectedClient.id, patch);
-    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  async function handleUpdateSelectedContact(patch: Partial<Contact>) {
+    if (!selectedDeal) return;
+    const updatedContact = await updateContactRow(supabase, selectedDeal.contact_id, patch);
+    setDeals((prev) => prev.map((d) => (d.id === selectedDeal.id ? { ...d, contact: updatedContact } : d)));
   }
 
-  async function handleChangeStage(newStage: number) {
-    if (!selectedClient) return;
-    const updated = await changeClientStage(supabase, selectedClient, newStage, userId);
-    setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  async function handleUpdateSelectedDeal(patch: Partial<Deal>) {
+    if (!selectedDeal) return;
+    const updated = await updateDealRow(supabase, selectedDeal.id, patch);
+    setDeals((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)));
+  }
+
+  async function handleChangeStage(newStageId: number) {
+    if (!selectedDeal) return;
+    const updated = await changeDealStage(supabase, selectedDeal.id, newStageId);
+    setDeals((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)));
     await loadActivities(updated.id);
   }
 
-  async function handleAddNote(stageId: number, contenu: string) {
-    if (!selectedClient) return;
+  async function handleAddNote(contenu: string) {
+    if (!selectedDeal) return;
     await addActivity(supabase, {
-      clientId: selectedClient.id,
-      type: STAGE_NOTE_TYPE[stageId] ?? "autre",
+      dealId: selectedDeal.id,
+      contactId: selectedDeal.contact_id,
       contenu,
       createdBy: userId,
     });
-    await loadActivities(selectedClient.id);
+    await loadActivities(selectedDeal.id);
   }
 
   async function handleDeleteSelected() {
-    if (!selectedClient) return;
-    await deleteClientRow(supabase, selectedClient.id);
-    setClients((prev) => prev.filter((c) => c.id !== selectedClient.id));
-    setSelectedClientId(null);
+    if (!selectedDeal) return;
+    await deleteDealRow(supabase, selectedDeal.id);
+    setDeals((prev) => prev.filter((d) => d.id !== selectedDeal.id));
+    setSelectedDealId(null);
   }
 
   async function handleExport() {
@@ -184,87 +181,88 @@ export default function DashboardPage() {
 
   const stageCounts = useMemo(() => {
     const counts: Record<number, number> = {};
-    for (const c of clients) counts[c.stage] = (counts[c.stage] ?? 0) + 1;
+    for (const d of deals) counts[d.stage_id] = (counts[d.stage_id] ?? 0) + 1;
     return counts;
-  }, [clients]);
+  }, [deals]);
 
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const c of clients) {
-      if (c.owner_id) counts[c.owner_id] = (counts[c.owner_id] ?? 0) + 1;
+    for (const d of deals) {
+      if (d.owner_id) counts[d.owner_id] = (counts[d.owner_id] ?? 0) + 1;
     }
     return counts;
-  }, [clients]);
+  }, [deals]);
 
   const dupeClientIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const c of clients) {
-      if (findClientMatchesForClient(c, clients, c.id).length > 0) ids.add(c.id);
+    for (const d of deals) {
+      if (findClientMatchesForDeal(d, deals, d.id).length > 0) ids.add(d.id);
     }
     return ids;
-  }, [clients]);
+  }, [deals]);
 
   const dupeCoachIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const c of clients) {
-      if (findCoachMatchesForClient(c, clients, c.id).length > 0) ids.add(c.id);
+    for (const d of deals) {
+      if (findCoachMatchesForDeal(d, deals, d.id).length > 0) ids.add(d.id);
     }
     return ids;
-  }, [clients]);
+  }, [deals]);
 
-  const filteredClients = useMemo(() => {
+  const filteredDeals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return clients.filter((c) => {
-      if (activeStage !== null && c.stage !== activeStage) return false;
-      if (activeOwnerId !== null && c.owner_id !== activeOwnerId) return false;
+    return deals.filter((d) => {
+      if (activeStage !== null && d.stage_id !== activeStage) return false;
+      if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
       if (q) {
-        const name = fullName({ prenom: c.prenom, nom: c.nom }).toLowerCase();
-        const email = (c.email ?? "").toLowerCase();
-        const phone = (c.telephone ?? "").toLowerCase();
+        const name = fullName(d.contact).toLowerCase();
+        const email = (d.contact.email ?? "").toLowerCase();
+        const phone = (d.contact.telephone ?? "").toLowerCase();
         if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) return false;
       }
       return true;
     });
-  }, [clients, activeStage, activeOwnerId, search]);
+  }, [deals, activeStage, activeOwnerId, search]);
 
+  const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border/15 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Bus size={26} className="text-brass" strokeWidth={1.75} />
-            <span className="font-heading text-xl uppercase tracking-widest text-text">
-              LOKI <span className="text-brass">Coach</span>
+            <Bus size={24} className="text-teal" strokeWidth={1.75} />
+            <span className="text-lg font-semibold tracking-tight text-text">
+              LOKI <span className="text-teal">Coach</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={loadAll}
-              className="flex items-center gap-1.5 font-heading text-xs uppercase tracking-wide px-3 py-2 rounded-md border border-border text-textSoft hover:text-text hover:border-brass/50"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40"
             >
               <RefreshCw size={14} /> Rafraîchir
             </button>
             <button
               type="button"
               onClick={handleExport}
-              className="flex items-center gap-1.5 font-heading text-xs uppercase tracking-wide px-3 py-2 rounded-md border border-border text-textSoft hover:text-text hover:border-brass/50"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40"
             >
               <Download size={14} /> Exporter
             </button>
             <button
               type="button"
-              onClick={() => setNewClientOpen(true)}
-              className="flex items-center gap-1.5 font-heading text-xs uppercase tracking-wide px-3 py-2 rounded-md bg-brass text-bg hover:bg-brassSoft"
+              onClick={() => setNewDealOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90"
             >
               <Plus size={14} /> Nouveau client
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 font-heading text-xs uppercase tracking-wide px-3 py-2 rounded-md border border-border text-textSoft hover:text-text hover:border-red-500/50"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-red-400/40"
               title="Se déconnecter"
             >
               <LogOut size={14} />
@@ -275,18 +273,11 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {error && (
-          <div className="rounded-md border border-red-700/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
+          <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
         )}
 
         <div className="flex flex-wrap gap-2">
-          <ViewTab
-            active={viewMode === "pipeline"}
-            onClick={() => setViewMode("pipeline")}
-            icon={Table2}
-            label="Pipeline"
-          />
+          <ViewTab active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")} icon={Table2} label="Pipeline" />
           <ViewTab
             active={viewMode === "suivis"}
             onClick={() => setViewMode("suivis")}
@@ -296,13 +287,13 @@ export default function DashboardPage() {
         </div>
 
         {viewMode === "pipeline" && (
-          <PipelineBar counts={stageCounts} activeStage={activeStage} onSelectStage={setActiveStage} />
+          <PipelineBar stages={stages} counts={stageCounts} activeStage={activeStage} onSelectStage={setActiveStage} />
         )}
 
         <RepresentativeTabs
           profiles={profiles}
           counts={ownerCounts}
-          totalCount={clients.length}
+          totalCount={deals.length}
           activeOwnerId={activeOwnerId}
           onSelect={setActiveOwnerId}
         />
@@ -310,38 +301,33 @@ export default function DashboardPage() {
         <button
           type="button"
           onClick={() => setShowRecap((v) => !v)}
-          className="font-heading text-xs uppercase tracking-wide text-textSoft hover:text-brassSoft underline underline-offset-2"
+          className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
         >
           {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
         </button>
-        {showRecap && <RecapTable clients={clients} profiles={profiles} />}
+        {showRecap && <RecapTable deals={deals} profiles={profiles} />}
 
         {viewMode === "pipeline" && (
           <>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[220px] max-w-sm">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-textFaint" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-textSoft/60" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher (nom, courriel, téléphone)"
-                  className="w-full rounded-md bg-surface2 border border-border pl-9 pr-3 py-2 text-sm text-text placeholder:text-textFaint focus:outline-none focus:border-brass"
+                  className="w-full rounded-lg bg-surface2 border border-border/20 pl-9 pr-3 py-2 text-sm text-text placeholder:text-textSoft/60 focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/20"
                 />
               </div>
 
               {(activeStage !== null || activeOwnerId !== null || search) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {activeStage !== null && (
-                    <Chip
-                      label={`Étape: ${STAGES.find((s) => s.id === activeStage)?.label}`}
-                      onClear={() => setActiveStage(null)}
-                    />
+                    <Chip label={`Étape: ${stageById.get(activeStage)?.label}`} onClear={() => setActiveStage(null)} />
                   )}
                   {activeOwnerId !== null && (
                     <Chip
-                      label={`Rep.: ${
-                        profileById.get(activeOwnerId)?.nom ?? profileById.get(activeOwnerId)?.email
-                      }`}
+                      label={`Rep.: ${profileById.get(activeOwnerId)?.nom ?? profileById.get(activeOwnerId)?.email}`}
                       onClear={() => setActiveOwnerId(null)}
                     />
                   )}
@@ -349,100 +335,101 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-xs font-heading uppercase tracking-wide text-textSoft ml-auto">
+              <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto">
                 <input
                   type="checkbox"
                   checked={groupByInterest}
                   onChange={(e) => setGroupByInterest(e.target.checked)}
-                  className="accent-[#C6A15B]"
+                  className="accent-teal"
                 />
                 Grouper par intérêt
               </label>
             </div>
 
             {loading ? (
-              <p className="text-sm text-textFaint py-10 text-center">Chargement…</p>
-            ) : filteredClients.length === 0 ? (
-              <p className="text-sm text-textFaint py-10 text-center">Aucun client ne correspond aux filtres actuels.</p>
+              <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
+            ) : filteredDeals.length === 0 ? (
+              <p className="text-sm text-textSoft py-10 text-center">Aucun client ne correspond aux filtres actuels.</p>
             ) : groupByInterest ? (
               <div className="space-y-6">
                 {INTERETS.map((interet) => {
-                  const group = filteredClients.filter((c) => c.niveau_interet === interet.v);
+                  const group = filteredDeals.filter((d) => d.niveau_interet === interet.v);
                   if (group.length === 0) return null;
                   return (
                     <div key={interet.v}>
                       <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="inline-block w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: interet.c }}
-                        />
-                        <h3 className="font-heading text-sm uppercase tracking-wide text-brassSoft">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: interet.c }} />
+                        <h3 className="text-sm font-medium text-teal">
                           {interet.v} ({group.length})
                         </h3>
                       </div>
-                      <ClientGrid
-                        clients={group}
+                      <DealGrid
+                        deals={group}
+                        stageById={stageById}
                         profileById={profileById}
                         dupeClientIds={dupeClientIds}
                         dupeCoachIds={dupeCoachIds}
-                        onOpen={openClient}
+                        onOpen={openDeal}
                       />
                     </div>
                   );
                 })}
                 {(() => {
-                  const noInterest = filteredClients.filter((c) => !c.niveau_interet);
+                  const noInterest = filteredDeals.filter((d) => !d.niveau_interet);
                   if (noInterest.length === 0) return null;
                   return (
                     <div>
-                      <h3 className="font-heading text-sm uppercase tracking-wide text-textSoft mb-2">
+                      <h3 className="text-sm font-medium text-textSoft mb-2">
                         Sans niveau d&apos;intérêt ({noInterest.length})
                       </h3>
-                      <ClientGrid
-                        clients={noInterest}
+                      <DealGrid
+                        deals={noInterest}
+                        stageById={stageById}
                         profileById={profileById}
                         dupeClientIds={dupeClientIds}
                         dupeCoachIds={dupeCoachIds}
-                        onOpen={openClient}
+                        onOpen={openDeal}
                       />
                     </div>
                   );
                 })()}
               </div>
             ) : (
-              <ClientGrid
-                clients={filteredClients}
+              <DealGrid
+                deals={filteredDeals}
+                stageById={stageById}
                 profileById={profileById}
                 dupeClientIds={dupeClientIds}
                 dupeCoachIds={dupeCoachIds}
-                onOpen={openClient}
+                onOpen={openDeal}
               />
             )}
           </>
         )}
 
-        {viewMode === "suivis" && (
-          <FollowUpsView clients={clients} profiles={profiles} onOpen={(c) => openClient(c.id)} />
-        )}
+        {viewMode === "suivis" && <FollowUpsView deals={deals} profiles={profiles} onOpen={(d) => openDeal(d.id)} />}
       </main>
 
-      <NewClientModal
-        open={newClientOpen}
-        onClose={() => setNewClientOpen(false)}
+      <NewDealModal
+        open={newDealOpen}
+        onClose={() => setNewDealOpen(false)}
         profiles={profiles}
-        existingClients={clients}
-        onCreate={handleCreateClient}
+        existingDeals={deals}
+        onCreate={handleCreateDeal}
       />
 
-      {selectedClient && (
-        <ClientDrawer
-          client={selectedClient}
+      {selectedDeal && (
+        <DealDrawer
+          deal={selectedDeal}
+          stages={stages}
           profiles={profiles}
-          allClients={clients}
+          coaches={coaches}
+          allDeals={deals}
           activities={activities}
           activitiesLoading={activitiesLoading}
-          onClose={() => setSelectedClientId(null)}
-          onUpdate={handleUpdateSelected}
+          onClose={() => setSelectedDealId(null)}
+          onUpdateContact={handleUpdateSelectedContact}
+          onUpdateDeal={handleUpdateSelectedDeal}
           onChangeStage={handleChangeStage}
           onAddNote={handleAddNote}
           onDelete={handleDeleteSelected}
@@ -467,10 +454,8 @@ function ViewTab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 font-heading text-xs uppercase tracking-wide px-3.5 py-2 rounded-md border transition-colors ${
-        active
-          ? "border-brass bg-brass/15 text-brassSoft"
-          : "border-border bg-surface text-textSoft hover:border-brass/50"
+      className={`flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-lg border transition-colors ${
+        active ? "border-teal bg-teal/10 text-teal" : "border-border/15 bg-surface text-textSoft hover:border-teal/40"
       }`}
     >
       <Icon size={14} /> {label}
@@ -480,7 +465,7 @@ function ViewTab({
 
 function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-surface2 border border-border px-2.5 py-1 text-[11px] text-textSoft">
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface2 border border-border/15 px-2.5 py-1 text-[11px] text-textSoft">
       {label}
       <button type="button" onClick={onClear} className="hover:text-text" aria-label="Retirer le filtre">
         <X size={11} />
@@ -489,14 +474,16 @@ function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   );
 }
 
-function ClientGrid({
-  clients,
+function DealGrid({
+  deals,
+  stageById,
   profileById,
   dupeClientIds,
   dupeCoachIds,
   onOpen,
 }: {
-  clients: Client[];
+  deals: DealWithContact[];
+  stageById: Map<number, PipelineStage>;
   profileById: Map<string, Profile>;
   dupeClientIds: Set<string>;
   dupeCoachIds: Set<string>;
@@ -504,14 +491,15 @@ function ClientGrid({
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-      {clients.map((c) => (
-        <ClientCard
-          key={c.id}
-          client={c}
-          ownerName={c.owner_id ? profileById.get(c.owner_id)?.nom ?? profileById.get(c.owner_id)?.email ?? null : null}
-          hasClientDupe={dupeClientIds.has(c.id)}
-          hasCoachDupe={dupeCoachIds.has(c.id)}
-          onOpen={() => onOpen(c.id)}
+      {deals.map((d) => (
+        <DealCard
+          key={d.id}
+          deal={d}
+          stage={stageById.get(d.stage_id)}
+          ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
+          hasClientDupe={dupeClientIds.has(d.id)}
+          hasCoachDupe={dupeCoachIds.has(d.id)}
+          onOpen={() => onOpen(d.id)}
         />
       ))}
     </div>

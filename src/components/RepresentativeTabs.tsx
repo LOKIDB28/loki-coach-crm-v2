@@ -54,10 +54,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`font-heading text-xs uppercase tracking-wide rounded-full px-3.5 py-1.5 border transition-colors ${
+      className={`text-xs font-medium rounded-full px-3.5 py-1.5 border transition-colors ${
         active
-          ? "border-brass bg-brass text-bg"
-          : "border-border bg-surface text-textSoft hover:border-brass/50 hover:text-text"
+          ? "border-teal bg-teal text-white"
+          : "border-border/15 bg-surface text-textSoft hover:border-teal/40 hover:text-text"
       }`}
     >
       {label} <span className="tabular-nums opacity-80">({count})</span>

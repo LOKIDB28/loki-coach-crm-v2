@@ -1,83 +1,140 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Activity,
-  ActivityType,
   ActivityWithAuthor,
-  Client,
-  NewClient,
+  Coach,
+  Contact,
+  Deal,
+  DealWithContact,
+  NewContact,
+  PipelineStage,
   Profile,
 } from "./types";
-import { stageById } from "./domain";
 
 export async function fetchProfiles(supabase: SupabaseClient): Promise<Profile[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, nom, email, created_at")
+    .select("id, nom, email, role, created_at")
     .order("nom", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Profile[];
 }
 
-export async function fetchClients(supabase: SupabaseClient): Promise<Client[]> {
+export async function fetchPipelineStages(supabase: SupabaseClient): Promise<PipelineStage[]> {
   const { data, error } = await supabase
-    .from("clients")
+    .from("pipeline_stages")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("position", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as Client[];
+  return (data ?? []) as PipelineStage[];
 }
 
-export async function fetchActivitiesForClient(
+export async function fetchCoaches(supabase: SupabaseClient): Promise<Coach[]> {
+  const { data, error } = await supabase
+    .from("coaches")
+    .select("*")
+    .order("unit_number", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Coach[];
+}
+
+export async function fetchDeals(supabase: SupabaseClient): Promise<DealWithContact[]> {
+  const { data, error } = await supabase
+    .from("deals")
+    .select("*, contact:contacts(*)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as DealWithContact[];
+}
+
+export async function fetchActivitiesForDeal(
   supabase: SupabaseClient,
-  clientId: string
+  dealId: string
 ): Promise<ActivityWithAuthor[]> {
   const { data, error } = await supabase
     .from("activities")
-    .select("*, author:profiles(id, nom, email, created_at)")
-    .eq("client_id", clientId)
+    .select("*, author:profiles(id, nom, email, role, created_at)")
+    .eq("deal_id", dealId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as ActivityWithAuthor[];
 }
 
-export async function createClient(
+/**
+ * Creates a contact and its first deal together (the "Nouveau client" flow -
+ * every new prospect enters the pipeline at stage 1 via a deal). Two
+ * sequential inserts, not atomic - acceptable at this team's scale, same
+ * tradeoff the prototype made for stage-change logging.
+ */
+export async function createContactAndDeal(
   supabase: SupabaseClient,
-  input: NewClient
-): Promise<Client> {
-  const { data, error } = await supabase
-    .from("clients")
-    .insert(input)
+  contactInput: NewContact,
+  dealInput: Partial<Deal>,
+  firstStageId: number
+): Promise<DealWithContact> {
+  const { data: contact, error: contactError } = await supabase
+    .from("contacts")
+    .insert(contactInput)
     .select("*")
     .single();
-  if (error) throw error;
-  return data as Client;
+  if (contactError) throw contactError;
+
+  const { data: deal, error: dealError } = await supabase
+    .from("deals")
+    .insert({ ...dealInput, contact_id: contact.id, stage_id: firstStageId })
+    .select("*")
+    .single();
+  if (dealError) throw dealError;
+
+  return { ...(deal as Deal), contact: contact as Contact };
 }
 
-export async function updateClientRow(
+export async function updateContactRow(
   supabase: SupabaseClient,
   id: string,
-  patch: Partial<Client>
-): Promise<Client> {
+  patch: Partial<Contact>
+): Promise<Contact> {
   const { data, error } = await supabase
-    .from("clients")
+    .from("contacts")
     .update(patch)
     .eq("id", id)
     .select("*")
     .single();
   if (error) throw error;
-  return data as Client;
+  return data as Contact;
 }
 
-export async function deleteClientRow(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.from("clients").delete().eq("id", id);
+export async function updateDealRow(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<Deal>
+): Promise<Deal> {
+  const { data, error } = await supabase
+    .from("deals")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as Deal;
+}
+
+/**
+ * Deletes only the deal (and its activities/tasks, via ON DELETE CASCADE) -
+ * the contact record is kept, since a contact can have other deals or just
+ * standing history. Matches the real schema's contact/deal split; the
+ * prototype's single-table "delete client" becomes "delete this deal".
+ */
+export async function deleteDealRow(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("deals").delete().eq("id", id);
   if (error) throw error;
 }
 
 export async function addActivity(
   supabase: SupabaseClient,
   params: {
-    clientId: string;
-    type: ActivityType;
+    dealId: string;
+    contactId: string;
     contenu: string;
     createdBy: string | null;
   }
@@ -85,8 +142,9 @@ export async function addActivity(
   const { data, error } = await supabase
     .from("activities")
     .insert({
-      client_id: params.clientId,
-      type: params.type,
+      deal_id: params.dealId,
+      contact_id: params.contactId,
+      type: "note",
       contenu: params.contenu,
       created_by: params.createdBy,
     })
@@ -97,48 +155,43 @@ export async function addActivity(
 }
 
 /**
- * Moves a client to a new stage and logs a `changement_etape` activity row
- * recording the from/to stage and the author, per the required stage-history
- * behaviour. Two sequential requests (no DB function in this MVP) - fine for
- * a 3-4 user team, but not atomic; a failure between the two leaves the
- * stage updated without a history row, which is acceptable for this scale.
+ * Moves a deal to a new stage. The deals_log_stage trigger on loki-crm-prod
+ * auto-inserts the changement_etape activity row server-side - no manual
+ * insert needed here (unlike the scaffold's original clients-table version).
  */
-export async function changeClientStage(
+export async function changeDealStage(
   supabase: SupabaseClient,
-  client: Client,
-  newStage: number,
-  authorId: string | null
-): Promise<Client> {
-  const updated = await updateClientRow(supabase, client.id, { stage: newStage });
-  const fromLabel = stageById(client.stage)?.label ?? `étape ${client.stage}`;
-  const toLabel = stageById(newStage)?.label ?? `étape ${newStage}`;
-  await addActivity(supabase, {
-    clientId: client.id,
-    type: "changement_etape",
-    contenu: `${fromLabel} → ${toLabel}`,
-    createdBy: authorId,
-  });
-  return updated;
+  dealId: string,
+  newStageId: number
+): Promise<Deal> {
+  return updateDealRow(supabase, dealId, { stage_id: newStageId });
 }
 
 export interface ExportPayload {
   exportedAt: string;
-  clients: Client[];
+  contacts: Contact[];
+  deals: Deal[];
   activities: Activity[];
 }
 
-/** Full backup export: every client plus every activity, as downloadable JSON. */
+/** Full backup export: every contact, deal, and activity, as downloadable JSON. */
 export async function fetchExportPayload(supabase: SupabaseClient): Promise<ExportPayload> {
-  const [{ data: clients, error: clientsError }, { data: activities, error: activitiesError }] =
-    await Promise.all([
-      supabase.from("clients").select("*").order("created_at", { ascending: true }),
-      supabase.from("activities").select("*").order("created_at", { ascending: true }),
-    ]);
-  if (clientsError) throw clientsError;
+  const [
+    { data: contacts, error: contactsError },
+    { data: deals, error: dealsError },
+    { data: activities, error: activitiesError },
+  ] = await Promise.all([
+    supabase.from("contacts").select("*").order("created_at", { ascending: true }),
+    supabase.from("deals").select("*").order("created_at", { ascending: true }),
+    supabase.from("activities").select("*").order("created_at", { ascending: true }),
+  ]);
+  if (contactsError) throw contactsError;
+  if (dealsError) throw dealsError;
   if (activitiesError) throw activitiesError;
   return {
     exportedAt: new Date().toISOString(),
-    clients: (clients ?? []) as Client[],
+    contacts: (contacts ?? []) as Contact[],
+    deals: (deals ?? []) as Deal[],
     activities: (activities ?? []) as Activity[],
   };
 }

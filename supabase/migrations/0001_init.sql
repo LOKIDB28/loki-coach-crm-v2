@@ -1,6 +1,14 @@
 -- LOKI Coach CRM v2 - initial schema
 -- Ports the data model of the legacy loki-coach-crm.jsx prototype to
 -- Postgres + Row Level Security on Supabase.
+--
+-- NOT RUN AGAINST loki-crm-prod. This scaffold was connected to a
+-- pre-existing production Supabase project (loki-crm-prod, ref
+-- lxujdwlhcsgfsvqrtgfq) with its own real schema (contacts/deals split,
+-- pipeline_stages, coaches, tasks - see the project README's "Data model"
+-- section). This file is kept as historical documentation of the
+-- scaffold's original single-table design only; the actual app runs
+-- against 0002_extend_deals_for_mvp.sql applied on top of the real schema.
 
 create extension if not exists "pgcrypto";
 

@@ -1,51 +1,53 @@
 "use client";
 
-import { STAGES } from "@/lib/domain";
+import { stageIcon } from "@/lib/domain";
+import type { PipelineStage } from "@/lib/types";
 
 interface PipelineBarProps {
+  stages: PipelineStage[];
   counts: Record<number, number>;
   activeStage: number | null;
   onSelectStage: (stage: number | null) => void;
 }
 
-/** 6-stage horizontal pipeline bar with per-stage counts, clickable to filter. */
-export function PipelineBar({ counts, activeStage, onSelectStage }: PipelineBarProps) {
+/** Pipeline bar with per-stage counts, clickable to filter. Stages are live data from public.pipeline_stages. */
+export function PipelineBar({ stages, counts, activeStage, onSelectStage }: PipelineBarProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-      {STAGES.map((stage) => {
-        const Icon = stage.icon;
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+      {stages.map((stage) => {
+        const Icon = stageIcon(stage.code);
         const isActive = activeStage === stage.id;
         const count = counts[stage.id] ?? 0;
+        const isWon = stage.code === "gagne";
+        const isLost = stage.code === "perdu";
         return (
           <button
             key={stage.id}
             type="button"
             onClick={() => onSelectStage(isActive ? null : stage.id)}
-            className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-left transition-colors ${
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
               isActive
-                ? "border-brass bg-brass/15"
-                : "border-border bg-surface hover:border-brass/50"
+                ? isWon
+                  ? "border-green bg-green/15"
+                  : "border-teal bg-teal/10"
+                : "border-border/15 bg-surface hover:border-teal/40"
             }`}
           >
             <Icon
               size={16}
               strokeWidth={1.75}
-              className={isActive ? "text-brass" : "text-textSoft"}
+              className={isActive ? (isWon ? "text-green" : "text-teal") : isLost ? "text-textSoft/60" : "text-textSoft"}
             />
             <div className="flex-1 min-w-0">
               <div
-                className={`font-heading text-[11px] uppercase tracking-wide truncate ${
-                  isActive ? "text-brassSoft" : "text-textSoft"
+                className={`text-[11px] font-medium truncate ${
+                  isActive ? (isWon ? "text-green" : "text-teal") : "text-textSoft"
                 }`}
               >
-                {stage.code} · {stage.label}
+                {stage.label}
               </div>
             </div>
-            <span
-              className={`font-heading text-sm tabular-nums ${
-                isActive ? "text-brassSoft" : "text-text"
-              }`}
-            >
+            <span className={`text-sm tabular-nums font-medium ${isActive ? "text-text" : "text-text"}`}>
               {count}
             </span>
           </button>

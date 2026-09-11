@@ -1,10 +1,10 @@
 "use client";
 
 import { INTERETS } from "@/lib/domain";
-import type { Client, Profile } from "@/lib/types";
+import type { DealWithContact, Profile } from "@/lib/types";
 
 interface RecapTableProps {
-  clients: Client[];
+  deals: DealWithContact[];
   profiles: Profile[];
 }
 
@@ -13,10 +13,9 @@ const NON_ASSIGNE = "__non_assigne__";
 /**
  * Recap matrix: rows = each team member (+ "Non assigné"), columns = each
  * niveau d'intérêt, cell = count, plus a totals row and column. Computed
- * live from the clients currently loaded (same shape as the prototype's
- * toggleable recap table).
+ * live from the deals currently loaded.
  */
-export function RecapTable({ clients, profiles }: RecapTableProps) {
+export function RecapTable({ deals, profiles }: RecapTableProps) {
   const rows: { key: string; label: string }[] = [
     ...profiles.map((p) => ({ key: p.id, label: p.nom || p.email || "Sans nom" })),
     { key: NON_ASSIGNE, label: "Non assigné" },
@@ -34,10 +33,10 @@ export function RecapTable({ clients, profiles }: RecapTableProps) {
   }
   for (const row of rows) rowFor(row.key);
 
-  for (const c of clients) {
-    const rowKey = c.owner_id ?? NON_ASSIGNE;
+  for (const d of deals) {
+    const rowKey = d.owner_id ?? NON_ASSIGNE;
     const gridRow = rowFor(rowKey);
-    const col = c.niveau_interet;
+    const col = d.niveau_interet;
     if (col && gridRow[col] !== undefined) {
       gridRow[col] += 1;
     }
@@ -50,61 +49,46 @@ export function RecapTable({ clients, profiles }: RecapTableProps) {
   const grandTotal = rows.reduce((sum, r) => sum + rowTotal(r.key), 0);
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <div className="overflow-x-auto rounded-xl border border-border/15">
       <table className="w-full text-sm min-w-[520px]">
         <thead>
           <tr className="bg-surface2">
-            <th className="text-left font-heading text-[11px] uppercase tracking-wide text-textSoft px-3 py-2">
+            <th className="text-left text-[11px] font-medium text-textSoft px-3 py-2">
               Représentant
             </th>
             {INTERETS.map((i) => (
-              <th
-                key={i.v}
-                className="text-right font-heading text-[11px] uppercase tracking-wide text-textSoft px-3 py-2"
-              >
+              <th key={i.v} className="text-right text-[11px] font-medium text-textSoft px-3 py-2">
                 <span className="inline-flex items-center gap-1.5 justify-end">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{ backgroundColor: i.c }}
-                  />
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: i.c }} />
                   {i.v}
                 </span>
               </th>
             ))}
-            <th className="text-right font-heading text-[11px] uppercase tracking-wide text-brassSoft px-3 py-2">
-              Total
-            </th>
+            <th className="text-right text-[11px] font-medium text-teal px-3 py-2">Total</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} className="border-t border-border">
+            <tr key={row.key} className="border-t border-border/15">
               <td className="px-3 py-2 text-text">{row.label}</td>
               {INTERETS.map((i) => (
                 <td key={i.v} className="px-3 py-2 text-right tabular-nums text-textSoft">
                   {grid[row.key]?.[i.v] ?? 0}
                 </td>
               ))}
-              <td className="px-3 py-2 text-right tabular-nums font-semibold text-brassSoft">
+              <td className="px-3 py-2 text-right tabular-nums font-semibold text-teal">
                 {rowTotal(row.key)}
               </td>
             </tr>
           ))}
-          <tr className="border-t border-border bg-surface2">
-            <td className="px-3 py-2 font-heading uppercase tracking-wide text-xs text-textSoft">
-              Total
-            </td>
+          <tr className="border-t border-border/15 bg-surface2">
+            <td className="px-3 py-2 font-medium text-xs text-textSoft">Total</td>
             {INTERETS.map((i) => (
-              <td
-                key={i.v}
-                className="px-3 py-2 text-right tabular-nums font-semibold text-text"
-              >
+              <td key={i.v} className="px-3 py-2 text-right tabular-nums font-semibold text-text">
                 {colTotal(i.v)}
               </td>
             ))}
-            <td className="px-3 py-2 text-right tabular-nums font-bold text-brassSoft">
-              {grandTotal}
-            </td>
+            <td className="px-3 py-2 text-right tabular-nums font-bold text-teal">{grandTotal}</td>
           </tr>
         </tbody>
       </table>
