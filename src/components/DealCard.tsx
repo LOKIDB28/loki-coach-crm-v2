@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
+import { formatCurrency } from "@/lib/format";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
 interface DealCardProps {
@@ -17,6 +18,13 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
   const { contact } = deal;
   const name = fullName(contact) || "(sans nom)";
 
+  const stageBadgeClass =
+    stage?.code === "gagne"
+      ? "bg-green text-onyx"
+      : stage?.code === "perdu"
+      ? "bg-stone/15 text-stone"
+      : "bg-surface2 text-teal";
+
   return (
     <button
       type="button"
@@ -31,7 +39,10 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
           <div className="text-xs text-textSoft capitalize">{contact.type_contact}</div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-surface2 text-teal">
+          {deal.montant !== null && deal.montant !== undefined && (
+            <span className="text-lg font-bold text-text">{formatCurrency(deal.montant)}</span>
+          )}
+          <span className={`text-[11px] font-medium rounded-full px-2.5 py-1 transition-colors duration-150 ${stageBadgeClass}`}>
             {stage?.label ?? "—"}
           </span>
           {deal.archived && (

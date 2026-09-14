@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Archive, ArchiveRestore, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, XCircle, X } from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
@@ -376,7 +376,7 @@ export function DealDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm">
-      <div className="w-full sm:max-w-xl h-full bg-bg border-l border-border/15 overflow-y-auto">
+      <div className="w-full sm:max-w-xl h-full bg-bg/80 backdrop-blur-md border-l border-border/10 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border/15 px-5 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-text truncate">
@@ -435,12 +435,12 @@ export function DealDrawer({
 
           {pendingAction && (
             <div
-              className={`rounded-xl border px-3.5 py-3 space-y-2 ${
+              className={`rounded-xl border px-3.5 py-3 space-y-2 backdrop-blur-sm ${
                 pendingAction === "gagne"
                   ? "border-green/30 bg-green/10"
                   : pendingAction === "perdu"
                   ? "border-red-400/30 bg-red-500/5"
-                  : "border-border/20 bg-surface2"
+                  : "border-border/20 bg-surface2/70"
               }`}
             >
               <p className="text-sm text-text">
@@ -920,15 +920,34 @@ export function DealDrawer({
 }
 
 function SaveSectionButton({ dirty, saving, onClick }: { dirty: boolean; saving: boolean; onClick: () => void }) {
+  const [justSaved, setJustSaved] = useState(false);
+  const wasSaving = useRef(false);
+
+  // Falling edge of `saving` while `dirty` is already false is a real
+  // success (on failure the section keeps dirty=true, so this never fires
+  // for an error - no false "Enregistré ✓" after a failed save).
+  useEffect(() => {
+    if (wasSaving.current && !saving && !dirty) {
+      setJustSaved(true);
+      const t = setTimeout(() => setJustSaved(false), 1200);
+      return () => clearTimeout(t);
+    }
+    wasSaving.current = saving;
+  }, [saving, dirty]);
+
+  const label = saving ? "Enregistrement…" : justSaved ? "Enregistré ✓" : "Enregistrer";
+
   return (
     <div className="flex justify-end pt-1">
       <button
         type="button"
         disabled={!dirty || saving}
         onClick={onClick}
-        className="text-[13px] font-medium px-3.5 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        className={`text-[13px] font-medium px-3.5 py-1.5 rounded-lg transition-all duration-150 disabled:cursor-not-allowed ${
+          justSaved ? "bg-green text-onyx" : "bg-teal text-white hover:bg-teal/90 disabled:opacity-40"
+        }`}
       >
-        {saving ? "Enregistrement…" : "Enregistrer"}
+        {label}
       </button>
     </div>
   );

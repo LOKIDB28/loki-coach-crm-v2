@@ -277,21 +277,21 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={loadAll}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               <RefreshCw size={14} /> Rafraîchir
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               <Download size={14} /> Exporter (Excel)
             </button>
             <button
               type="button"
               onClick={() => setNewDealOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
             >
               <Plus size={14} /> Nouveau client
             </button>
