@@ -318,7 +318,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleExport}
-              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
+              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
             >
               Sauvegarde complète (JSON)
             </button>
@@ -384,7 +384,7 @@ export default function DashboardPage() {
                       }}
                       className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
                     >
-                      {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
+                      Récap
                     </button>
                     <button
                       type="button"
@@ -394,7 +394,7 @@ export default function DashboardPage() {
                       }}
                       className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
                     >
-                      {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
+                      Archivés
                     </button>
                   </div>
                 </>
@@ -459,16 +459,16 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setShowRecap((v) => !v)}
-            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
+            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
           >
-            {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
+            Récap
           </button>
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
-            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
+            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
           >
-            {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
+            Archivés
           </button>
         </div>
         {showRecap && <RecapTable deals={visibleDeals} profiles={profiles} />}
