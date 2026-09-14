@@ -284,11 +284,13 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           {/* The full wordmark is 22.7:1 (1541x68) - even at a small height
               it needs 350-500px+ width, more than an iPhone's entire content
-              width. Below sm, show a compact "LC" mark instead; the real
-              wordmark only appears once there's room for it. */}
-          <div className="bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center shrink-0">
-            <span className="sm:hidden text-teal font-bold text-sm tracking-tight leading-none">LC</span>
-            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="hidden sm:block h-6 sm:h-7 w-auto" />
+              width. Below sm, show the compact "LOKI" mark instead; the full
+              wordmark only appears once there's room for it. The mark is
+              dark text on transparent, so the plate flips light-on-dark to
+              dark-on-light between the two - same shape/padding either way. */}
+          <div className="bg-paper border border-border/15 sm:border-0 sm:bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center shrink-0">
+            <img src="/loki-mark.png" alt="LOKI" className="sm:hidden h-2.5 w-auto object-contain" />
+            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="hidden sm:block h-6 sm:h-7 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-2">
             {/* Desktop-only secondary actions - folded into the "…" menu on mobile */}
