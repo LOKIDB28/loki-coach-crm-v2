@@ -208,12 +208,13 @@ export default function DashboardPage() {
     router.refresh();
   }
 
-  // Archived deals are excluded from every derived list below by default -
-  // counts, recap, dupe checks, suivis - not just the visible grid. The
-  // "Afficher les archivés" toggle switches the single shared source all
-  // of them read from.
+  // Two mutually exclusive views, never mixed: by default every derived
+  // list below (counts, recap, dupe checks, suivis, the grid itself) only
+  // ever sees non-archived deals; toggling "Afficher les dossiers
+  // archivés" switches that single shared source to archived-only - not a
+  // union of both.
   const visibleDeals = useMemo(
-    () => (showArchived ? deals : deals.filter((d) => !d.archived)),
+    () => deals.filter((d) => (showArchived ? d.archived : !d.archived)),
     [deals, showArchived]
   );
 
@@ -318,6 +319,19 @@ export default function DashboardPage() {
           <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
         )}
 
+        {showArchived && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface2 px-4 py-3 text-sm text-textSoft">
+            <span>Vous consultez uniquement les dossiers archivés — les dossiers actifs sont masqués.</span>
+            <button
+              type="button"
+              onClick={() => setShowArchived(false)}
+              className="text-xs font-medium text-teal hover:underline shrink-0"
+            >
+              ← Retour aux dossiers actifs
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           <ViewTab active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")} icon={Table2} label="Pipeline" />
           <ViewTab
@@ -353,7 +367,7 @@ export default function DashboardPage() {
             onClick={() => setShowArchived((v) => !v)}
             className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
           >
-            {showArchived ? "Masquer les dossiers archivés" : "Afficher les dossiers archivés"}
+            {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
           </button>
         </div>
         {showRecap && <RecapTable deals={visibleDeals} profiles={profiles} />}
