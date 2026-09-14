@@ -166,6 +166,41 @@ export default function DashboardPage() {
     }
   }
 
+  /**
+   * Rep-facing CSV export - the columns visible on screen, for whatever is
+   * currently filtered (search/stage/owner). Synchronous, built from
+   * filteredDeals already in memory - no extra fetch, unlike the full JSON
+   * backup which re-pulls every row.
+   */
+  function handleExportCsv() {
+    const headers = ["Client", "Téléphone", "Courriel", "Ville", "Étape", "Montant", "Canal", "Source", "Représentant"];
+    const rows = filteredDeals.map((d) => {
+      const owner = d.owner_id ? profileById.get(d.owner_id) : null;
+      return [
+        fullName(d.contact),
+        d.contact.telephone ?? "",
+        d.contact.email ?? "",
+        d.contact.ville ?? "",
+        stageById.get(d.stage_id)?.label ?? "",
+        d.montant ?? "",
+        d.canal,
+        d.source ?? "",
+        d.owner_id ? owner?.nom || owner?.email || "" : "Non assigné",
+      ];
+    });
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `loki-coach-deals-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -237,10 +272,10 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
-              onClick={handleExport}
+              onClick={handleExportCsv}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40"
             >
-              <Download size={14} /> Exporter
+              <Download size={14} /> Exporter (Excel)
             </button>
             <button
               type="button"
@@ -248,6 +283,13 @@ export default function DashboardPage() {
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90"
             >
               <Plus size={14} /> Nouveau client
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              className="text-[11px] text-textSoft/60 hover:text-textSoft underline underline-offset-2"
+            >
+              Sauvegarde complète (JSON)
             </button>
             <button
               type="button"
@@ -493,4 +535,10 @@ function DealGrid({
       ))}
     </div>
   );
+}
+
+/** RFC 4180-ish CSV cell: quotes the value only when it contains a comma, quote, or newline. */
+function csvCell(value: string | number | null | undefined): string {
+  const s = value === null || value === undefined ? "" : String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
