@@ -282,8 +282,13 @@ export default function DashboardPage() {
       />
       <header className="border-b border-border/15 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center">
-            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="h-6 sm:h-7 w-auto" />
+          {/* The full wordmark is 22.7:1 (1541x68) - even at a small height
+              it needs 350-500px+ width, more than an iPhone's entire content
+              width. Below sm, show a compact "LC" mark instead; the real
+              wordmark only appears once there's room for it. */}
+          <div className="bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center shrink-0">
+            <span className="sm:hidden text-teal font-bold text-sm tracking-tight leading-none">LC</span>
+            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="hidden sm:block h-6 sm:h-7 w-auto" />
           </div>
           <div className="flex items-center gap-2">
             {/* Desktop-only secondary actions - folded into the "…" menu on mobile */}
@@ -334,7 +339,12 @@ export default function DashboardPage() {
               {mobileMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
+                  {/* fixed + left/right (not absolute + w-64 anchored to this
+                      small trigger) - guarantees the panel stays inside the
+                      viewport regardless of where the trigger sits in the
+                      header row, instead of a fixed width that can overflow
+                      past the left edge. */}
+                  <div className="fixed left-4 right-4 top-20 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
                     <button
                       type="button"
                       onClick={() => {
