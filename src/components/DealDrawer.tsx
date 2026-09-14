@@ -19,7 +19,7 @@ import {
   SOURCE_SUGGESTIONS,
   stageIcon,
 } from "@/lib/domain";
-import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/format";
+import { formatCurrency, fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/format";
 import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 interface DealDrawerProps {
@@ -35,6 +35,110 @@ interface DealDrawerProps {
   onUpdateDeal: (patch: Partial<Deal>) => Promise<void>;
   onChangeStage: (newStageId: number) => Promise<void>;
   onAddNote: (contenu: string) => Promise<void>;
+}
+
+// Local draft state for each pipeline-stage section - fields here are NOT
+// autosaved (unlike the quick contact fields and stage stepper, which
+// still commit immediately). Each section only writes to Supabase when its
+// own "Enregistrer" button is clicked, per the project's explicit choice
+// to batch stage-section edits rather than save silently per field.
+
+interface Section1State {
+  source: string;
+  niveau_interet: Deal["niveau_interet"];
+  dirty: boolean;
+  saving: boolean;
+}
+function section1Defaults(deal: DealWithContact): Section1State {
+  return { source: deal.contact.source ?? "", niveau_interet: deal.niveau_interet, dirty: false, saving: false };
+}
+
+interface Section2State {
+  coach_vise: string;
+  coach_id: string | null;
+  dirty: boolean;
+  saving: boolean;
+}
+function section2Defaults(deal: DealWithContact): Section2State {
+  return { coach_vise: deal.coach_vise ?? "", coach_id: deal.coach_id, dirty: false, saving: false };
+}
+
+interface Section3State {
+  next_action_at: string | null;
+  evaluation_client: Deal["evaluation_client"];
+  date_visite_usine: string | null;
+  date_essai_routier: string | null;
+  dirty: boolean;
+  saving: boolean;
+}
+function section3Defaults(deal: DealWithContact): Section3State {
+  return {
+    next_action_at: deal.next_action_at,
+    evaluation_client: deal.evaluation_client,
+    date_visite_usine: deal.date_visite_usine,
+    date_essai_routier: deal.date_essai_routier,
+    dirty: false,
+    saving: false,
+  };
+}
+
+interface Section4State {
+  montant: number | null;
+  valeur_echange: number | null;
+  options: string;
+  echange_marque: string;
+  echange_modele: string;
+  echange_annee: string;
+  echange_km: string;
+  echange_accidente: Deal["echange_accidente"];
+  echange_numero_serie: string;
+  dirty: boolean;
+  saving: boolean;
+}
+function section4Defaults(deal: DealWithContact): Section4State {
+  return {
+    montant: deal.montant,
+    valeur_echange: deal.valeur_echange,
+    options: deal.options ?? "",
+    echange_marque: deal.echange_marque ?? "",
+    echange_modele: deal.echange_modele ?? "",
+    echange_annee: deal.echange_annee ?? "",
+    echange_km: deal.echange_km ?? "",
+    echange_accidente: deal.echange_accidente,
+    echange_numero_serie: deal.echange_numero_serie ?? "",
+    dirty: false,
+    saving: false,
+  };
+}
+
+// No montant here - it's editable only in section 4 (Proposition) and
+// shown read-only in section 6 (Gagné), straight from the live deal, so
+// the two sections' independent "Enregistrer" buttons can never
+// desynchronize the same underlying field.
+interface Section6State {
+  date_contrat: string | null;
+  numero_contrat: string;
+  date_rdv_service: string | null;
+  dirty: boolean;
+  saving: boolean;
+}
+function section6Defaults(deal: DealWithContact): Section6State {
+  return {
+    date_contrat: deal.date_contrat,
+    numero_contrat: deal.numero_contrat ?? "",
+    date_rdv_service: deal.date_rdv_service,
+    dirty: false,
+    saving: false,
+  };
+}
+
+interface Section7State {
+  lost_reason: string;
+  dirty: boolean;
+  saving: boolean;
+}
+function section7Defaults(deal: DealWithContact): Section7State {
+  return { lost_reason: deal.lost_reason ?? "", dirty: false, saving: false };
 }
 
 export function DealDrawer({
@@ -55,13 +159,35 @@ export function DealDrawer({
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
   const [saving, setSaving] = useState(false);
 
+  const [section1, setSection1] = useState(() => section1Defaults(deal));
+  const [section2, setSection2] = useState(() => section2Defaults(deal));
+  const [section3, setSection3] = useState(() => section3Defaults(deal));
+  const [section4, setSection4] = useState(() => section4Defaults(deal));
+  const [section6, setSection6] = useState(() => section6Defaults(deal));
+  const [section7, setSection7] = useState(() => section7Defaults(deal));
+
+  // Quick contact fields, the stepper, and owner_id stay autosaved - resync
+  // them on every deal update, not just when switching to a different deal.
   useEffect(() => {
     setLocalContact(deal.contact);
     setLocalDeal(deal);
   }, [deal]);
 
+  // Section drafts only reset when actually opening a different deal - an
+  // unrelated autosave elsewhere (owner_id, stage stepper) must not wipe an
+  // in-progress, not-yet-saved section edit.
+  useEffect(() => {
+    setSection1(section1Defaults(deal));
+    setSection2(section2Defaults(deal));
+    setSection3(section3Defaults(deal));
+    setSection4(section4Defaults(deal));
+    setSection6(section6Defaults(deal));
+    setSection7(section7Defaults(deal));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal.id]);
+
   const clientDupes = findClientMatchesForDeal(deal, allDeals, deal.id);
-  const coachDupes = findCoachMatchesForDeal(localDeal, allDeals, deal.id);
+  const coachDupes = findCoachMatchesForDeal({ coach_vise: section2.coach_vise }, allDeals, deal.id);
 
   async function commitContact(patch: Partial<Contact>) {
     setLocalContact((c) => ({ ...c, ...patch }));
@@ -80,6 +206,82 @@ export function DealDrawer({
       await onUpdateDeal(patch);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveSection1() {
+    setSection1((s) => ({ ...s, saving: true }));
+    try {
+      await Promise.all([
+        onUpdateContact({ source: section1.source || null }),
+        onUpdateDeal({ niveau_interet: section1.niveau_interet }),
+      ]);
+    } finally {
+      setSection1((s) => ({ ...s, saving: false, dirty: false }));
+    }
+  }
+
+  async function saveSection2() {
+    setSection2((s) => ({ ...s, saving: true }));
+    try {
+      await onUpdateDeal({ coach_vise: section2.coach_vise || null, coach_id: section2.coach_id });
+    } finally {
+      setSection2((s) => ({ ...s, saving: false, dirty: false }));
+    }
+  }
+
+  async function saveSection3() {
+    setSection3((s) => ({ ...s, saving: true }));
+    try {
+      await onUpdateDeal({
+        next_action_at: section3.next_action_at,
+        evaluation_client: section3.evaluation_client,
+        date_visite_usine: section3.date_visite_usine,
+        date_essai_routier: section3.date_essai_routier,
+      });
+    } finally {
+      setSection3((s) => ({ ...s, saving: false, dirty: false }));
+    }
+  }
+
+  async function saveSection4() {
+    setSection4((s) => ({ ...s, saving: true }));
+    try {
+      await onUpdateDeal({
+        montant: section4.montant,
+        valeur_echange: section4.valeur_echange,
+        options: section4.options || null,
+        echange_marque: section4.echange_marque || null,
+        echange_modele: section4.echange_modele || null,
+        echange_annee: section4.echange_annee || null,
+        echange_km: section4.echange_km || null,
+        echange_accidente: section4.echange_accidente,
+        echange_numero_serie: section4.echange_numero_serie || null,
+      });
+    } finally {
+      setSection4((s) => ({ ...s, saving: false, dirty: false }));
+    }
+  }
+
+  async function saveSection6() {
+    setSection6((s) => ({ ...s, saving: true }));
+    try {
+      await onUpdateDeal({
+        date_contrat: section6.date_contrat,
+        numero_contrat: section6.numero_contrat || null,
+        date_rdv_service: section6.date_rdv_service,
+      });
+    } finally {
+      setSection6((s) => ({ ...s, saving: false, dirty: false }));
+    }
+  }
+
+  async function saveSection7() {
+    setSection7((s) => ({ ...s, saving: true }));
+    try {
+      await onUpdateDeal({ lost_reason: section7.lost_reason || null });
+    } finally {
+      setSection7((s) => ({ ...s, saving: false, dirty: false }));
     }
   }
 
@@ -134,7 +336,7 @@ export function DealDrawer({
             </div>
           )}
 
-          {/* Stage stepper */}
+          {/* Stage stepper - autosave, unchanged */}
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface px-3 py-2.5">
             <button
               type="button"
@@ -162,7 +364,7 @@ export function DealDrawer({
             </button>
           </div>
 
-          {/* Quick contact fields */}
+          {/* Quick contact fields - autosave, unchanged */}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom">
               <TextInput
@@ -235,7 +437,7 @@ export function DealDrawer({
             <ActivityFeed activities={activities} loading={activitiesLoading} />
           </div>
 
-          {/* Per-stage sections */}
+          {/* Per-stage sections - draft + explicit "Enregistrer" per section */}
           <div className="space-y-2.5">
             <Section
               code="1"
@@ -248,9 +450,8 @@ export function DealDrawer({
                 <Field label="Source">
                   <TextInput
                     list="source-suggestions"
-                    value={localContact.source ?? ""}
-                    onChange={(e) => setLocalContact((c) => ({ ...c, source: e.target.value }))}
-                    onBlur={(e) => commitContact({ source: e.target.value || null })}
+                    value={section1.source}
+                    onChange={(e) => setSection1((s) => ({ ...s, source: e.target.value, dirty: true }))}
                   />
                   <datalist id="source-suggestions">
                     {SOURCE_SUGGESTIONS.map((s) => (
@@ -260,8 +461,14 @@ export function DealDrawer({
                 </Field>
                 <Field label="Niveau d'intérêt">
                   <Select
-                    value={localDeal.niveau_interet ?? ""}
-                    onChange={(e) => commitDeal({ niveau_interet: (e.target.value || null) as Deal["niveau_interet"] })}
+                    value={section1.niveau_interet ?? ""}
+                    onChange={(e) =>
+                      setSection1((s) => ({
+                        ...s,
+                        niveau_interet: (e.target.value || null) as Deal["niveau_interet"],
+                        dirty: true,
+                      }))
+                    }
                   >
                     <option value="">—</option>
                     {INTERETS.map((i) => (
@@ -272,6 +479,7 @@ export function DealDrawer({
                   </Select>
                 </Field>
               </div>
+              <SaveSectionButton dirty={section1.dirty} saving={section1.saving} onClick={saveSection1} />
             </Section>
 
             <Section
@@ -284,15 +492,14 @@ export function DealDrawer({
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Coach visé" className="col-span-2">
                   <TextInput
-                    value={localDeal.coach_vise ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, coach_vise: e.target.value }))}
-                    onBlur={(e) => commitDeal({ coach_vise: e.target.value })}
+                    value={section2.coach_vise}
+                    onChange={(e) => setSection2((s) => ({ ...s, coach_vise: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Coach (inventaire)" className="col-span-2">
                   <Select
-                    value={localDeal.coach_id ?? ""}
-                    onChange={(e) => commitDeal({ coach_id: e.target.value || null })}
+                    value={section2.coach_id ?? ""}
+                    onChange={(e) => setSection2((s) => ({ ...s, coach_id: e.target.value || null, dirty: true }))}
                   >
                     <option value="">Non lié</option>
                     {coaches.map((c) => (
@@ -303,6 +510,7 @@ export function DealDrawer({
                   </Select>
                 </Field>
               </div>
+              <SaveSectionButton dirty={section2.dirty} saving={section2.saving} onClick={saveSection2} />
             </Section>
 
             <Section
@@ -316,15 +524,21 @@ export function DealDrawer({
                 <Field label="Date de suivi">
                   <TextInput
                     type="datetime-local"
-                    value={toDatetimeLocalValue(localDeal.next_action_at)}
-                    onChange={(e) => commitDeal({ next_action_at: fromDatetimeLocalValue(e.target.value) })}
+                    value={toDatetimeLocalValue(section3.next_action_at)}
+                    onChange={(e) =>
+                      setSection3((s) => ({ ...s, next_action_at: fromDatetimeLocalValue(e.target.value), dirty: true }))
+                    }
                   />
                 </Field>
                 <Field label="Évaluation du client">
                   <Select
-                    value={localDeal.evaluation_client ?? ""}
+                    value={section3.evaluation_client ?? ""}
                     onChange={(e) =>
-                      commitDeal({ evaluation_client: (e.target.value || null) as Deal["evaluation_client"] })
+                      setSection3((s) => ({
+                        ...s,
+                        evaluation_client: (e.target.value || null) as Deal["evaluation_client"],
+                        dirty: true,
+                      }))
                     }
                   >
                     <option value="">—</option>
@@ -338,18 +552,31 @@ export function DealDrawer({
                 <Field label="Date visite d'usine">
                   <TextInput
                     type="datetime-local"
-                    value={toDatetimeLocalValue(localDeal.date_visite_usine)}
-                    onChange={(e) => commitDeal({ date_visite_usine: fromDatetimeLocalValue(e.target.value) })}
+                    value={toDatetimeLocalValue(section3.date_visite_usine)}
+                    onChange={(e) =>
+                      setSection3((s) => ({
+                        ...s,
+                        date_visite_usine: fromDatetimeLocalValue(e.target.value),
+                        dirty: true,
+                      }))
+                    }
                   />
                 </Field>
                 <Field label="Date essai routier">
                   <TextInput
                     type="datetime-local"
-                    value={toDatetimeLocalValue(localDeal.date_essai_routier)}
-                    onChange={(e) => commitDeal({ date_essai_routier: fromDatetimeLocalValue(e.target.value) })}
+                    value={toDatetimeLocalValue(section3.date_essai_routier)}
+                    onChange={(e) =>
+                      setSection3((s) => ({
+                        ...s,
+                        date_essai_routier: fromDatetimeLocalValue(e.target.value),
+                        dirty: true,
+                      }))
+                    }
                   />
                 </Field>
               </div>
+              <SaveSectionButton dirty={section3.dirty} saving={section3.saving} onClick={saveSection3} />
             </Section>
 
             <Section
@@ -361,17 +588,22 @@ export function DealDrawer({
             >
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prix de vente">
-                  <CurrencyInput value={localDeal.montant} onChange={(v) => commitDeal({ montant: v })} />
+                  <CurrencyInput
+                    value={section4.montant}
+                    onChange={(v) => setSection4((s) => ({ ...s, montant: v, dirty: true }))}
+                  />
                 </Field>
                 <Field label="Valeur d'échange">
-                  <CurrencyInput value={localDeal.valeur_echange} onChange={(v) => commitDeal({ valeur_echange: v })} />
+                  <CurrencyInput
+                    value={section4.valeur_echange}
+                    onChange={(v) => setSection4((s) => ({ ...s, valeur_echange: v, dirty: true }))}
+                  />
                 </Field>
               </div>
               <Field label="Options sélectionnées">
                 <TextArea
-                  value={localDeal.options ?? ""}
-                  onChange={(e) => setLocalDeal((d) => ({ ...d, options: e.target.value }))}
-                  onBlur={(e) => commitDeal({ options: e.target.value })}
+                  value={section4.options}
+                  onChange={(e) => setSection4((s) => ({ ...s, options: e.target.value, dirty: true }))}
                   rows={2}
                 />
               </Field>
@@ -379,37 +611,37 @@ export function DealDrawer({
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <Field label="Marque">
                   <TextInput
-                    value={localDeal.echange_marque ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, echange_marque: e.target.value }))}
-                    onBlur={(e) => commitDeal({ echange_marque: e.target.value })}
+                    value={section4.echange_marque}
+                    onChange={(e) => setSection4((s) => ({ ...s, echange_marque: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Modèle">
                   <TextInput
-                    value={localDeal.echange_modele ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, echange_modele: e.target.value }))}
-                    onBlur={(e) => commitDeal({ echange_modele: e.target.value })}
+                    value={section4.echange_modele}
+                    onChange={(e) => setSection4((s) => ({ ...s, echange_modele: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Année">
                   <TextInput
-                    value={localDeal.echange_annee ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, echange_annee: e.target.value }))}
-                    onBlur={(e) => commitDeal({ echange_annee: e.target.value })}
+                    value={section4.echange_annee}
+                    onChange={(e) => setSection4((s) => ({ ...s, echange_annee: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Km">
                   <TextInput
-                    value={localDeal.echange_km ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, echange_km: e.target.value }))}
-                    onBlur={(e) => commitDeal({ echange_km: e.target.value })}
+                    value={section4.echange_km}
+                    onChange={(e) => setSection4((s) => ({ ...s, echange_km: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Accidenté">
                   <Select
-                    value={localDeal.echange_accidente ?? ""}
+                    value={section4.echange_accidente ?? ""}
                     onChange={(e) =>
-                      commitDeal({ echange_accidente: (e.target.value || null) as Deal["echange_accidente"] })
+                      setSection4((s) => ({
+                        ...s,
+                        echange_accidente: (e.target.value || null) as Deal["echange_accidente"],
+                        dirty: true,
+                      }))
                     }
                   >
                     <option value="">—</option>
@@ -423,11 +655,11 @@ export function DealDrawer({
               </div>
               <Field label="N° de série (échange)">
                 <TextInput
-                  value={localDeal.echange_numero_serie ?? ""}
-                  onChange={(e) => setLocalDeal((d) => ({ ...d, echange_numero_serie: e.target.value }))}
-                  onBlur={(e) => commitDeal({ echange_numero_serie: e.target.value })}
+                  value={section4.echange_numero_serie}
+                  onChange={(e) => setSection4((s) => ({ ...s, echange_numero_serie: e.target.value, dirty: true }))}
                 />
               </Field>
+              <SaveSectionButton dirty={section4.dirty} saving={section4.saving} onClick={saveSection4} />
             </Section>
 
             <Section
@@ -447,36 +679,39 @@ export function DealDrawer({
               active={localDeal.stage_id === gagneStage?.id}
               defaultOpen={localDeal.stage_id === gagneStage?.id}
             >
-              <p className="text-xs text-textSoft -mt-1">
-                Le montant final est le même champ que le prix de vente saisi à l&apos;étape Proposition -
-                ajustable ici aussi si le montant signé diffère.
-              </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Montant final">
-                  <CurrencyInput value={localDeal.montant} onChange={(v) => commitDeal({ montant: v })} />
+                  <p className="rounded-lg bg-surface2 border border-border/20 px-3 py-2 text-sm text-text">
+                    {formatCurrency(localDeal.montant)}
+                  </p>
+                  <p className="text-[11px] text-textSoft mt-1">Montant confirmé à l&apos;étape Proposition</p>
                 </Field>
                 <Field label="Date du contrat">
                   <TextInput
                     type="date"
-                    value={localDeal.date_contrat ?? ""}
-                    onChange={(e) => commitDeal({ date_contrat: e.target.value || null })}
+                    value={section6.date_contrat ?? ""}
+                    onChange={(e) =>
+                      setSection6((s) => ({ ...s, date_contrat: e.target.value || null, dirty: true }))
+                    }
                   />
                 </Field>
                 <Field label="N° de contrat">
                   <TextInput
-                    value={localDeal.numero_contrat ?? ""}
-                    onChange={(e) => setLocalDeal((d) => ({ ...d, numero_contrat: e.target.value }))}
-                    onBlur={(e) => commitDeal({ numero_contrat: e.target.value })}
+                    value={section6.numero_contrat}
+                    onChange={(e) => setSection6((s) => ({ ...s, numero_contrat: e.target.value, dirty: true }))}
                   />
                 </Field>
                 <Field label="Date du 1er rendez-vous service">
                   <TextInput
                     type="date"
-                    value={localDeal.date_rdv_service ?? ""}
-                    onChange={(e) => commitDeal({ date_rdv_service: e.target.value || null })}
+                    value={section6.date_rdv_service ?? ""}
+                    onChange={(e) =>
+                      setSection6((s) => ({ ...s, date_rdv_service: e.target.value || null, dirty: true }))
+                    }
                   />
                 </Field>
               </div>
+              <SaveSectionButton dirty={section6.dirty} saving={section6.saving} onClick={saveSection6} />
             </Section>
 
             <Section
@@ -488,18 +723,33 @@ export function DealDrawer({
             >
               <Field label="Raison de la perte">
                 <TextArea
-                  value={localDeal.lost_reason ?? ""}
-                  onChange={(e) => setLocalDeal((d) => ({ ...d, lost_reason: e.target.value }))}
-                  onBlur={(e) => commitDeal({ lost_reason: e.target.value })}
+                  value={section7.lost_reason}
+                  onChange={(e) => setSection7((s) => ({ ...s, lost_reason: e.target.value, dirty: true }))}
                   rows={2}
                 />
               </Field>
+              <SaveSectionButton dirty={section7.dirty} saving={section7.saving} onClick={saveSection7} />
             </Section>
 
             <NoteComposer onSubmit={onAddNote} />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SaveSectionButton({ dirty, saving, onClick }: { dirty: boolean; saving: boolean; onClick: () => void }) {
+  return (
+    <div className="flex justify-end pt-1">
+      <button
+        type="button"
+        disabled={!dirty || saving}
+        onClick={onClick}
+        className="text-[13px] font-medium px-3.5 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {saving ? "Enregistrement…" : "Enregistrer"}
+      </button>
     </div>
   );
 }
@@ -522,7 +772,12 @@ function NoteComposer({ onSubmit }: { onSubmit: (text: string) => Promise<void> 
   return (
     <div className="pt-1">
       <Field label="Ajouter une note">
-        <TextArea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Nouvelle note…" />
+        <TextArea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder="Nouvelle note…"
+        />
       </Field>
       <div className="flex justify-end mt-1.5">
         <button
