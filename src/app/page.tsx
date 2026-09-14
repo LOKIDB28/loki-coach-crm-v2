@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [groupByInterest, setGroupByInterest] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
 
   const [newDealOpen, setNewDealOpen] = useState(false);
@@ -207,39 +208,48 @@ export default function DashboardPage() {
     router.refresh();
   }
 
+  // Archived deals are excluded from every derived list below by default -
+  // counts, recap, dupe checks, suivis - not just the visible grid. The
+  // "Afficher les archivés" toggle switches the single shared source all
+  // of them read from.
+  const visibleDeals = useMemo(
+    () => (showArchived ? deals : deals.filter((d) => !d.archived)),
+    [deals, showArchived]
+  );
+
   const stageCounts = useMemo(() => {
     const counts: Record<number, number> = {};
-    for (const d of deals) counts[d.stage_id] = (counts[d.stage_id] ?? 0) + 1;
+    for (const d of visibleDeals) counts[d.stage_id] = (counts[d.stage_id] ?? 0) + 1;
     return counts;
-  }, [deals]);
+  }, [visibleDeals]);
 
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const d of deals) {
+    for (const d of visibleDeals) {
       if (d.owner_id) counts[d.owner_id] = (counts[d.owner_id] ?? 0) + 1;
     }
     return counts;
-  }, [deals]);
+  }, [visibleDeals]);
 
   const dupeClientIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const d of deals) {
-      if (findClientMatchesForDeal(d, deals, d.id).length > 0) ids.add(d.id);
+    for (const d of visibleDeals) {
+      if (findClientMatchesForDeal(d, visibleDeals, d.id).length > 0) ids.add(d.id);
     }
     return ids;
-  }, [deals]);
+  }, [visibleDeals]);
 
   const dupeCoachIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const d of deals) {
-      if (findCoachMatchesForDeal(d, deals, d.id).length > 0) ids.add(d.id);
+    for (const d of visibleDeals) {
+      if (findCoachMatchesForDeal(d, visibleDeals, d.id).length > 0) ids.add(d.id);
     }
     return ids;
-  }, [deals]);
+  }, [visibleDeals]);
 
   const filteredDeals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return deals.filter((d) => {
+    return visibleDeals.filter((d) => {
       if (activeStage !== null && d.stage_id !== activeStage) return false;
       if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
       if (q) {
@@ -250,7 +260,7 @@ export default function DashboardPage() {
       }
       return true;
     });
-  }, [deals, activeStage, activeOwnerId, search]);
+  }, [visibleDeals, activeStage, activeOwnerId, search]);
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
@@ -325,19 +335,28 @@ export default function DashboardPage() {
         <RepresentativeTabs
           profiles={profiles}
           counts={ownerCounts}
-          totalCount={deals.length}
+          totalCount={visibleDeals.length}
           activeOwnerId={activeOwnerId}
           onSelect={setActiveOwnerId}
         />
 
-        <button
-          type="button"
-          onClick={() => setShowRecap((v) => !v)}
-          className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
-        >
-          {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
-        </button>
-        {showRecap && <RecapTable deals={deals} profiles={profiles} />}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setShowRecap((v) => !v)}
+            className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
+          >
+            {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
+          >
+            {showArchived ? "Masquer les dossiers archivés" : "Afficher les dossiers archivés"}
+          </button>
+        </div>
+        {showRecap && <RecapTable deals={visibleDeals} profiles={profiles} />}
 
         {viewMode === "pipeline" && (
           <>
@@ -439,13 +458,17 @@ export default function DashboardPage() {
           </>
         )}
 
-        {viewMode === "suivis" && <FollowUpsView deals={deals} profiles={profiles} onOpen={(d) => openDeal(d.id)} />}
+        {viewMode === "suivis" && (
+          <FollowUpsView deals={visibleDeals} profiles={profiles} onOpen={(d) => openDeal(d.id)} />
+        )}
       </main>
 
       <NewDealModal
         open={newDealOpen}
         onClose={() => setNewDealOpen(false)}
         profiles={profiles}
+        // Full deals list, not visibleDeals - a duplicate-of-an-archived-deal
+        // is still worth flagging when creating a new one.
         existingDeals={deals}
         onCreate={handleCreateDeal}
       />
@@ -456,7 +479,7 @@ export default function DashboardPage() {
           stages={stages}
           profiles={profiles}
           coaches={coaches}
-          allDeals={deals}
+          allDeals={visibleDeals}
           activities={activities}
           activitiesLoading={activitiesLoading}
           onClose={() => setSelectedDealId(null)}

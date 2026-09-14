@@ -21,16 +21,25 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
     <button
       type="button"
       onClick={onOpen}
-      className="text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm"
+      className={`text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm ${
+        deal.archived ? "opacity-60" : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-base font-medium leading-tight text-text truncate">{name}</div>
           <div className="text-xs text-textSoft capitalize">{contact.type_contact}</div>
         </div>
-        <span className="shrink-0 text-[11px] font-medium rounded-full px-2.5 py-1 bg-surface2 text-teal">
-          {stage?.label ?? "—"}
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-[11px] font-medium rounded-full px-2.5 py-1 bg-surface2 text-teal">
+            {stage?.label ?? "—"}
+          </span>
+          {deal.archived && (
+            <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-textSoft/15 text-textSoft">
+              Archivé
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1 text-sm text-textSoft">

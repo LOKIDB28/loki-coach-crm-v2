@@ -120,6 +120,9 @@ export interface Deal {
   date_contrat: string | null;
   numero_contrat: string | null;
   date_rdv_service: string | null;
+
+  // Added by 0005_add_deals_archived.sql.
+  archived: boolean;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {

@@ -29,7 +29,7 @@ were reconciled.
 This app targets the existing **loki-crm-prod** project — there is no
 fresh Supabase project to create.
 
-1. **Apply the two migrations** in the `loki-crm-prod` Supabase SQL editor:
+1. **Apply the three migrations** in the `loki-crm-prod` Supabase SQL editor:
    - `supabase/migrations/0003_extend_deals_for_mvp.sql` — adds nullable
      columns to `deals` (never touches existing data) to cover MVP fields
      the original prod schema didn't have yet (niveau d'intérêt, évaluation
@@ -39,10 +39,12 @@ fresh Supabase project to create.
      `authenticated` role had RLS policies but no base table `GRANT`s, so
      every signed-in query fails with `permission denied for table X` until
      this runs. See that file's header comment for how this was diagnosed.
+   - `supabase/migrations/0005_add_deals_archived.sql` — adds
+     `deals.archived boolean not null default false`, symmetric to
+     `contacts.archived`. Powers the "Archiver ce dossier" action.
 
    `supabase/migrations/0001_init.sql` is kept only as historical
    documentation of the scaffold's original (never-deployed) schema design
-   — not run against `loki-crm-prod`.
    — it is not run against `loki-crm-prod`.
 2. **Confirm the auth bootstrap trigger**: `loki-crm-prod` already has an
    `on_auth_user_created` trigger on `auth.users` that creates a
@@ -179,11 +181,20 @@ everyone internal but only editable by their own owner.
 - Create/read/update on contacts/deals, all fields from the prototype
   (reconciled against the real schema — see "Data model"). **No delete,
   anywhere in the app** — project rule: no physical deletion of contacts,
-  deals, or tasks; `contacts.archived` exists for archiving, `deals` has no
-  archived flag yet and no delete/archive UI (the `perdu` pipeline stage
-  already marks a deal closed-lost). `authenticated` has no DELETE grant on
-  any table (see `0004_grant_authenticated_privileges.sql`) — this is
-  enforced at the database level, not only in app code.
+  deals, or tasks. `authenticated` has no DELETE grant on any table (see
+  `0004_grant_authenticated_privileges.sql`) — enforced at the database
+  level, not only in app code. `deals.archived` (symmetric to
+  `contacts.archived`) backs an "Archiver ce dossier" action in the deal
+  drawer (with confirmation) and a "Désarchiver" one-click undo; archived
+  deals are excluded from every pipeline view/count/recap/dupe-check by
+  default, toggled back in via "Afficher les dossiers archivés".
+- Explicit close-out: "Marquer gagné" / "Marquer perdu" buttons in the deal
+  drawer set `stage_id` directly to the closed stage regardless of the
+  deal's current stage, with confirmation. The stage stepper's ◀▶ arrows
+  only move within the 5 open stages (driven by `pipeline_stages.is_open`)
+  and never reach `gagne`/`perdu` as a side effect. Neither button is
+  disabled by the deal's current state — a "perdu" deal can always be
+  reopened as "gagné" later.
 - Pipeline bar (counts per stage, click to filter, live from
   `pipeline_stages`) and a stage stepper in the deal detail drawer.
 - Chronological, newest-first activity feed per deal (notes + stage
@@ -247,18 +258,3 @@ being applied) — the `handle_new_user`-equivalent trigger, the RLS
 policies as written, and the
 magic-link redirect flow end to end.
 
-## Dette technique / à faire
-
-- **`deals.archived`** — pas encore de colonne équivalente à
-  `contacts.archived` côté deal. En attendant, la seule façon de "fermer"
-  un dossier est de le passer au stage `perdu`, ce qui va mélanger deux cas
-  très différents : une vraie vente perdue (donnée utile pour le forecast/
-  reporting) et un dossier créé par erreur ou en double qu'on veut juste
-  retirer de la vue. Résultat attendu si rien n'est fait : le stage `perdu`
-  se pollue avec des faux dossiers, faussant les stats basées dessus.
-  **À faire une fois l'app stable** : migration additive ajoutant
-  `deals.archived boolean not null default false`, et remplacer/compléter
-  le stage `perdu` par une action d'archivage distincte pour les dossiers
-  à retirer sans les compter comme une vente perdue. Pas de bouton
-  "Supprimer" sur les deals en attendant (voir "Data model" — aucun
-  GRANT DELETE n'existe de toute façon côté `authenticated`).

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Archive, ArchiveRestore, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, XCircle, X } from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
@@ -159,6 +159,11 @@ export function DealDrawer({
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
   const [saving, setSaving] = useState(false);
 
+  // Archiver / Marquer gagné / Marquer perdu share one pending-confirmation
+  // slot rather than three near-identical boolean flags + banners.
+  const [pendingAction, setPendingAction] = useState<"archive" | "gagne" | "perdu" | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
   const [section1, setSection1] = useState(() => section1Defaults(deal));
   const [section2, setSection2] = useState(() => section2Defaults(deal));
   const [section3, setSection3] = useState(() => section3Defaults(deal));
@@ -183,6 +188,7 @@ export function DealDrawer({
     setSection4(section4Defaults(deal));
     setSection6(section6Defaults(deal));
     setSection7(section7Defaults(deal));
+    setPendingAction(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id]);
 
@@ -285,8 +291,15 @@ export function DealDrawer({
     }
   }
 
-  const currentStageIndex = stages.findIndex((s) => s.id === localDeal.stage_id);
-  const currentStage = stages[currentStageIndex];
+  const currentStage = stages.find((s) => s.id === localDeal.stage_id);
+
+  // The stepper's arrows only ever move within the open stages - closing a
+  // deal (gagné/perdu) is exclusively done via the two dedicated buttons
+  // below, never as a side effect of clicking "next" past the last open
+  // stage. Driven by pipeline_stages.is_open, not a hardcoded stage list.
+  const openStages = stages.filter((s) => s.is_open);
+  const openIndex = openStages.findIndex((s) => s.id === localDeal.stage_id);
+  const isClosedStage = openIndex === -1;
 
   const stageByCode = (code: string) => stages.find((s) => s.code === code);
   const prospectStage = stageByCode("prospect");
@@ -296,6 +309,28 @@ export function DealDrawer({
   const negociationStage = stageByCode("negociation");
   const gagneStage = stageByCode("gagne");
   const perduStage = stageByCode("perdu");
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+    setActionBusy(true);
+    try {
+      if (pendingAction === "archive") {
+        await onUpdateDeal({ archived: true });
+        onClose();
+      } else if (pendingAction === "gagne" && gagneStage) {
+        await onChangeStage(gagneStage.id);
+      } else if (pendingAction === "perdu" && perduStage) {
+        await onChangeStage(perduStage.id);
+      }
+    } finally {
+      setActionBusy(false);
+      setPendingAction(null);
+    }
+  }
+
+  async function handleUnarchive() {
+    await onUpdateDeal({ archived: false });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm">
@@ -308,6 +343,27 @@ export function DealDrawer({
             <p className="text-xs text-textSoft">{saving ? "Enregistrement…" : "Enregistré"}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {deal.archived ? (
+              <button
+                type="button"
+                onClick={handleUnarchive}
+                className="text-textSoft hover:text-teal"
+                aria-label="Désarchiver le dossier"
+                title="Désarchiver le dossier"
+              >
+                <ArchiveRestore size={18} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPendingAction("archive")}
+                className="text-textSoft hover:text-text"
+                aria-label="Archiver le dossier"
+                title="Archiver le dossier"
+              >
+                <Archive size={18} />
+              </button>
+            )}
             <button type="button" onClick={onClose} className="text-textSoft hover:text-text" aria-label="Fermer">
               <X size={20} />
             </button>
@@ -315,6 +371,49 @@ export function DealDrawer({
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {deal.archived && (
+            <div className="rounded-lg bg-textSoft/10 px-3 py-2 text-xs text-textSoft">
+              Ce dossier est archivé - masqué de la vue Pipeline par défaut.
+            </div>
+          )}
+
+          {pendingAction && (
+            <div
+              className={`rounded-xl border px-3.5 py-3 space-y-2 ${
+                pendingAction === "gagne"
+                  ? "border-green/30 bg-green/10"
+                  : pendingAction === "perdu"
+                  ? "border-red-400/30 bg-red-500/5"
+                  : "border-border/20 bg-surface2"
+              }`}
+            >
+              <p className="text-sm text-text">
+                {pendingAction === "archive" &&
+                  "Archiver ce dossier ? Il disparaîtra de la vue Pipeline par défaut, mais restera consultable via «Afficher les dossiers archivés» et pourra être désarchivé à tout moment."}
+                {pendingAction === "gagne" && "Marquer ce dossier comme gagné ?"}
+                {pendingAction === "perdu" && "Marquer ce dossier comme perdu ?"}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={confirmPendingAction}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
+                >
+                  {actionBusy ? "En cours…" : "Confirmer"}
+                </button>
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => setPendingAction(null)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+
           {(clientDupes.length > 0 || coachDupes.length > 0) && (
             <div className="space-y-1.5">
               {clientDupes.length > 0 && (
@@ -336,31 +435,56 @@ export function DealDrawer({
             </div>
           )}
 
-          {/* Stage stepper - autosave, unchanged */}
+          {/* Stage stepper - open stages only (5). Closing a deal never
+              happens via the arrows, only via the two buttons below. */}
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface px-3 py-2.5">
             <button
               type="button"
-              disabled={currentStageIndex <= 0}
-              onClick={() => onChangeStage(stages[currentStageIndex - 1]!.id)}
+              disabled={isClosedStage || openIndex <= 0}
+              onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
               className="text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
               aria-label="Étape précédente"
             >
               <ChevronLeft size={20} />
             </button>
             <div className="text-center">
-              <div className="text-xs font-medium text-teal">{currentStage?.label}</div>
-              <div className="text-[11px] text-textSoft">
-                Étape {currentStageIndex + 1} / {stages.length}
+              <div className={`text-xs font-medium ${isClosedStage ? "text-textSoft" : "text-teal"}`}>
+                {currentStage?.label}
               </div>
+              {!isClosedStage && (
+                <div className="text-[11px] text-textSoft">
+                  Étape {openIndex + 1} / {openStages.length}
+                </div>
+              )}
             </div>
             <button
               type="button"
-              disabled={currentStageIndex >= stages.length - 1}
-              onClick={() => onChangeStage(stages[currentStageIndex + 1]!.id)}
+              disabled={isClosedStage || openIndex >= openStages.length - 1}
+              onClick={() => onChangeStage(openStages[openIndex + 1]!.id)}
               className="text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
               aria-label="Étape suivante"
             >
               <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* Always-visible, explicit close-out actions - never a side
+              effect of the stepper, and never disabled by current state
+              (a "perdu" deal can always be reopened as "gagné" later). */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingAction("gagne")}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-green text-onyx hover:bg-green/90"
+            >
+              <CheckCircle2 size={14} /> Marquer gagné
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingAction("perdu")}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-red-400/40 text-red-500 hover:bg-red-500/10"
+            >
+              <XCircle size={14} /> Marquer perdu
             </button>
           </div>
 
