@@ -19,7 +19,7 @@ import {
   SOURCE_SUGGESTIONS,
   stageIcon,
 } from "@/lib/domain";
-import { formatCurrency, fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/format";
+import { formatCurrency, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
 import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 interface DealDrawerProps {
@@ -164,6 +164,12 @@ export function DealDrawer({
   const [pendingAction, setPendingAction] = useState<"archive" | "gagne" | "perdu" | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
+  // Shared error surface for every save path in this drawer - previously a
+  // failed request (e.g. writing to a column that doesn't exist yet) threw
+  // with no catch anywhere, so it failed completely silently: the button
+  // looked like it did nothing, no error ever reached the screen.
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const [section1, setSection1] = useState(() => section1Defaults(deal));
   const [section2, setSection2] = useState(() => section2Defaults(deal));
   const [section3, setSection3] = useState(() => section3Defaults(deal));
@@ -189,6 +195,7 @@ export function DealDrawer({
     setSection6(section6Defaults(deal));
     setSection7(section7Defaults(deal));
     setPendingAction(null);
+    setSaveError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id]);
 
@@ -198,8 +205,11 @@ export function DealDrawer({
   async function commitContact(patch: Partial<Contact>) {
     setLocalContact((c) => ({ ...c, ...patch }));
     setSaving(true);
+    setSaveError(null);
     try {
       await onUpdateContact(patch);
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
     } finally {
       setSaving(false);
     }
@@ -208,8 +218,11 @@ export function DealDrawer({
   async function commitDeal(patch: Partial<Deal>) {
     setLocalDeal((d) => ({ ...d, ...patch }));
     setSaving(true);
+    setSaveError(null);
     try {
       await onUpdateDeal(patch);
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
     } finally {
       setSaving(false);
     }
@@ -217,27 +230,34 @@ export function DealDrawer({
 
   async function saveSection1() {
     setSection1((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await Promise.all([
         onUpdateContact({ source: section1.source || null }),
         onUpdateDeal({ niveau_interet: section1.niveau_interet }),
       ]);
-    } finally {
       setSection1((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection1((s) => ({ ...s, saving: false }));
     }
   }
 
   async function saveSection2() {
     setSection2((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await onUpdateDeal({ coach_vise: section2.coach_vise || null, coach_id: section2.coach_id });
-    } finally {
       setSection2((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection2((s) => ({ ...s, saving: false }));
     }
   }
 
   async function saveSection3() {
     setSection3((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await onUpdateDeal({
         next_action_at: section3.next_action_at,
@@ -245,13 +265,16 @@ export function DealDrawer({
         date_visite_usine: section3.date_visite_usine,
         date_essai_routier: section3.date_essai_routier,
       });
-    } finally {
       setSection3((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection3((s) => ({ ...s, saving: false }));
     }
   }
 
   async function saveSection4() {
     setSection4((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await onUpdateDeal({
         montant: section4.montant,
@@ -264,30 +287,38 @@ export function DealDrawer({
         echange_accidente: section4.echange_accidente,
         echange_numero_serie: section4.echange_numero_serie || null,
       });
-    } finally {
       setSection4((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection4((s) => ({ ...s, saving: false }));
     }
   }
 
   async function saveSection6() {
     setSection6((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await onUpdateDeal({
         date_contrat: section6.date_contrat,
         numero_contrat: section6.numero_contrat || null,
         date_rdv_service: section6.date_rdv_service,
       });
-    } finally {
       setSection6((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection6((s) => ({ ...s, saving: false }));
     }
   }
 
   async function saveSection7() {
     setSection7((s) => ({ ...s, saving: true }));
+    setSaveError(null);
     try {
       await onUpdateDeal({ lost_reason: section7.lost_reason || null });
-    } finally {
       setSection7((s) => ({ ...s, saving: false, dirty: false }));
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
+      setSection7((s) => ({ ...s, saving: false }));
     }
   }
 
@@ -313,6 +344,7 @@ export function DealDrawer({
   async function confirmPendingAction() {
     if (!pendingAction) return;
     setActionBusy(true);
+    setSaveError(null);
     try {
       if (pendingAction === "archive") {
         await onUpdateDeal({ archived: true });
@@ -322,14 +354,24 @@ export function DealDrawer({
       } else if (pendingAction === "perdu" && perduStage) {
         await onChangeStage(perduStage.id);
       }
+      setPendingAction(null);
+    } catch (err) {
+      // Keep the confirmation banner open on failure so "Confirmer" can be
+      // retried once the error above is understood, instead of silently
+      // dismissing as if nothing happened.
+      setSaveError(getErrorMessage(err, "Erreur lors de l'action."));
     } finally {
       setActionBusy(false);
-      setPendingAction(null);
     }
   }
 
   async function handleUnarchive() {
-    await onUpdateDeal({ archived: false });
+    setSaveError(null);
+    try {
+      await onUpdateDeal({ archived: false });
+    } catch (err) {
+      setSaveError(getErrorMessage(err, "Erreur lors du désarchivage."));
+    }
   }
 
   return (
@@ -371,6 +413,20 @@ export function DealDrawer({
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {saveError && (
+            <div className="flex items-start justify-between gap-2 rounded-lg border border-red-400/30 bg-red-500/5 px-3 py-2 text-sm text-red-500">
+              <span>{saveError}</span>
+              <button
+                type="button"
+                onClick={() => setSaveError(null)}
+                className="shrink-0 hover:text-red-600"
+                aria-label="Fermer le message d'erreur"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {deal.archived && (
             <div className="rounded-lg bg-textSoft/10 px-3 py-2 text-xs text-textSoft">
               Ce dossier est archivé - masqué de la vue Pipeline par défaut.
