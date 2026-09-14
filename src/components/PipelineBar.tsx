@@ -13,7 +13,7 @@ interface PipelineBarProps {
 /** Pipeline bar with per-stage counts, clickable to filter. Stages are live data from public.pipeline_stages. */
 export function PipelineBar({ stages, counts, activeStage, onSelectStage }: PipelineBarProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+    <div className="flex sm:grid overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none gap-2 sm:grid-cols-4 lg:grid-cols-7 -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
       {stages.map((stage) => {
         const Icon = stageIcon(stage.code);
         const isActive = activeStage === stage.id;
@@ -25,7 +25,7 @@ export function PipelineBar({ stages, counts, activeStage, onSelectStage }: Pipe
             key={stage.id}
             type="button"
             onClick={() => onSelectStage(isActive ? null : stage.id)}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+            className={`shrink-0 snap-start w-[150px] sm:w-auto min-h-11 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
               isActive
                 ? isWon
                   ? "border-green bg-green/15"

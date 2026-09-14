@@ -98,9 +98,14 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-onyx/50 backdrop-blur-sm px-4 py-6 overflow-y-auto">
       <div className="w-full max-w-2xl bg-surface/60 backdrop-blur-md border border-border/10 rounded-2xl shadow-xl my-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/15">
-          <h2 className="text-lg font-semibold text-text">Nouveau client — Prospect identifié</h2>
-          <button type="button" onClick={onClose} className="text-textSoft hover:text-text" aria-label="Fermer">
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border/15">
+          <h2 className="text-lg font-semibold text-text min-w-0">Nouveau client — Prospect identifié</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center min-w-11 min-h-11 shrink-0 text-textSoft hover:text-text"
+            aria-label="Fermer"
+          >
             <X size={18} />
           </button>
         </div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Download, LogOut, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
+import { Archive, CalendarClock, Download, LogOut, MoreHorizontal, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   addActivity,
@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newDealOpen, setNewDealOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityWithAuthor[]>([]);
@@ -285,38 +286,115 @@ export default function DashboardPage() {
             <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="h-6 sm:h-7 w-auto" />
           </div>
           <div className="flex items-center gap-2">
+            {/* Desktop-only secondary actions - folded into the "…" menu on mobile */}
             <button
               type="button"
               onClick={loadAll}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               <RefreshCw size={14} /> Rafraîchir
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               <Download size={14} /> Exporter (Excel)
             </button>
             <button
               type="button"
               onClick={() => setNewDealOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
+              aria-label="Nouveau client"
+              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
             >
-              <Plus size={14} /> Nouveau client
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nouveau client</span>
             </button>
             <button
               type="button"
               onClick={handleExport}
-              className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
+              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
             >
               Sauvegarde complète (JSON)
             </button>
+
+            {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde JSON,
+                récap et archives toggles - everything that's a separate row
+                or extra header button on desktop, collapsed to one trigger. */}
+            <div className="relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                aria-label="Plus d'actions"
+                aria-expanded={mobileMenuOpen}
+                className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+              {mobileMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loadAll();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                    >
+                      <RefreshCw size={16} /> Rafraîchir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExportCsv();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                    >
+                      <Download size={16} /> Exporter (Excel)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExport();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                    >
+                      Sauvegarde complète (JSON)
+                    </button>
+                    <div className="my-1 border-t border-border/15" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRecap((v) => !v);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                    >
+                      {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowArchived((v) => !v);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                    >
+                      {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-red-400/40"
+              className="flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 gap-1.5 text-xs font-medium rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-red-400/40 transition-colors duration-150"
               title="Se déconnecter"
             >
               <LogOut size={14} />
@@ -325,7 +403,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-24 sm:pb-6 space-y-5">
         {error && (
           <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
         )}
@@ -343,7 +421,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        {/* Desktop-only - the bottom tab bar replaces this on mobile */}
+        <div className="hidden sm:flex flex-wrap gap-2">
           <ViewTab active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")} icon={Table2} label="Pipeline" />
           <ViewTab
             active={viewMode === "suivis"}
@@ -365,7 +444,8 @@ export default function DashboardPage() {
           onSelect={setActiveOwnerId}
         />
 
-        <div className="flex flex-wrap gap-3">
+        {/* Desktop-only - these two toggles live in the "…" menu on mobile */}
+        <div className="hidden sm:flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => setShowRecap((v) => !v)}
@@ -411,12 +491,12 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto">
+              <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto min-h-11 py-2">
                 <input
                   type="checkbox"
                   checked={groupByInterest}
                   onChange={(e) => setGroupByInterest(e.target.checked)}
-                  className="accent-teal"
+                  className="accent-teal w-4 h-4"
                 />
                 Grouper par intérêt
               </label>
@@ -488,6 +568,52 @@ export default function DashboardPage() {
         )}
       </main>
 
+      {/* Mobile-only bottom tab bar - native iOS pattern, replaces the
+          desktop ViewTab row + the "Afficher les archivés" toggle. */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-border/15 pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-3">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("pipeline");
+              setShowArchived(false);
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-11 text-[11px] font-medium transition-colors duration-150 ${
+              viewMode === "pipeline" && !showArchived ? "text-teal" : "text-textSoft"
+            }`}
+          >
+            <Table2 size={20} />
+            Pipeline
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("suivis");
+              setShowArchived(false);
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-11 text-[11px] font-medium transition-colors duration-150 ${
+              viewMode === "suivis" ? "text-teal" : "text-textSoft"
+            }`}
+          >
+            <CalendarClock size={20} />
+            Suivis
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("pipeline");
+              setShowArchived(true);
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-11 text-[11px] font-medium transition-colors duration-150 ${
+              showArchived ? "text-teal" : "text-textSoft"
+            }`}
+          >
+            <Archive size={20} />
+            Archives
+          </button>
+        </div>
+      </nav>
+
       <NewDealModal
         open={newDealOpen}
         onClose={() => setNewDealOpen(false)}
@@ -546,7 +672,7 @@ function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-surface2 border border-border/15 px-2.5 py-1 text-[11px] text-textSoft">
       {label}
-      <button type="button" onClick={onClear} className="hover:text-text" aria-label="Retirer le filtre">
+      <button type="button" onClick={onClear} className="hover:text-text p-3 -m-3" aria-label="Retirer le filtre">
         <X size={11} />
       </button>
     </span>

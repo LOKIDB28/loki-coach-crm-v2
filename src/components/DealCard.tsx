@@ -36,13 +36,15 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-base font-medium leading-tight text-text truncate">{name}</div>
-          <div className="text-xs text-textSoft capitalize">{contact.type_contact}</div>
+          <div className="text-xs text-textSoft capitalize truncate">{contact.type_contact}</div>
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex flex-col items-end gap-1 shrink-0 max-w-[45%]">
           {deal.montant !== null && deal.montant !== undefined && (
-            <span className="text-lg font-bold text-text">{formatCurrency(deal.montant)}</span>
+            <span className="text-lg font-bold text-text truncate max-w-full">{formatCurrency(deal.montant)}</span>
           )}
-          <span className={`text-[11px] font-medium rounded-full px-2.5 py-1 transition-colors duration-150 ${stageBadgeClass}`}>
+          <span
+            className={`text-[11px] font-medium rounded-full px-2.5 py-1 truncate max-w-full transition-colors duration-150 ${stageBadgeClass}`}
+          >
             {stage?.label ?? "—"}
           </span>
           {deal.archived && (
@@ -75,9 +77,9 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
       </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-border/15">
-        <span className="text-xs text-textSoft truncate">{ownerName ?? "Non assigné"}</span>
+        <span className="text-xs text-textSoft truncate min-w-0">{ownerName ?? "Non assigné"}</span>
         {deal.niveau_interet && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
+          <span className="inline-flex items-center gap-1.5 text-xs text-textSoft shrink-0">
             <span
               className="inline-block w-2 h-2 rounded-full"
               style={{ backgroundColor: interetColor(deal.niveau_interet) }}

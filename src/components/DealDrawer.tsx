@@ -384,12 +384,12 @@ export function DealDrawer({
             </h2>
             <p className="text-xs text-textSoft">{saving ? "Enregistrement…" : "Enregistré"}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {deal.archived ? (
               <button
                 type="button"
                 onClick={handleUnarchive}
-                className="text-textSoft hover:text-teal"
+                className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal"
                 aria-label="Désarchiver le dossier"
                 title="Désarchiver le dossier"
               >
@@ -399,14 +399,19 @@ export function DealDrawer({
               <button
                 type="button"
                 onClick={() => setPendingAction("archive")}
-                className="text-textSoft hover:text-text"
+                className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-text"
                 aria-label="Archiver le dossier"
                 title="Archiver le dossier"
               >
                 <Archive size={18} />
               </button>
             )}
-            <button type="button" onClick={onClose} className="text-textSoft hover:text-text" aria-label="Fermer">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-text"
+              aria-label="Fermer"
+            >
               <X size={20} />
             </button>
           </div>
@@ -498,7 +503,7 @@ export function DealDrawer({
               type="button"
               disabled={isClosedStage || openIndex <= 0}
               onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
-              className="text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
+              className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
               aria-label="Étape précédente"
             >
               <ChevronLeft size={20} />
@@ -517,7 +522,7 @@ export function DealDrawer({
               type="button"
               disabled={isClosedStage || openIndex >= openStages.length - 1}
               onClick={() => onChangeStage(openStages[openIndex + 1]!.id)}
-              className="text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
+              className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
               aria-label="Étape suivante"
             >
               <ChevronRight size={20} />
