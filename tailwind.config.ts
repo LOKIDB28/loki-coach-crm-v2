@@ -3,8 +3,9 @@ import type { Config } from "tailwindcss";
 // Semantic tokens resolve to CSS custom properties (see globals.css) so the
 // same class names (bg-surface, text-text, border-border, …) work in both
 // light and dark automatically via prefers-color-scheme. Brand colors
-// (teal/onyx/paper/paperDim/stone/green) are the fixed palette; keep them in
-// sync with src/lib/theme.ts.
+// (teal/onyx/paper/paperDim/stone/green) are the original fixed palette;
+// orange was added later, by explicit request, for discreet secondary links
+// only. Keep all of these in sync with src/lib/theme.ts.
 const config: Config = {
   darkMode: "media",
   content: [
@@ -21,6 +22,7 @@ const config: Config = {
         paperDim: "#F9F9F9",
         stone: "#6B7280",
         green: "#A6FA30",
+        orange: "#FF5C34",
 
         bg: "rgb(var(--bg) / <alpha-value>)",
         surface: "rgb(var(--surface) / <alpha-value>)",

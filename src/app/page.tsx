@@ -309,7 +309,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleExport}
-              className="text-[11px] text-textSoft/60 hover:text-textSoft underline underline-offset-2"
+              className="text-[11px] text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
             >
               Sauvegarde complète (JSON)
             </button>
@@ -369,14 +369,14 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setShowRecap((v) => !v)}
-            className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
+            className="text-xs font-medium text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
           >
             {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
           </button>
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
-            className="text-xs font-medium text-textSoft hover:text-teal underline underline-offset-2"
+            className="text-xs font-medium text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
           >
             {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
           </button>

@@ -5,7 +5,8 @@
 /*
  * Semantic tokens as RGB triples (for Tailwind's rgb(var(--x) / <alpha>)
  * opacity support). Brand hexes: teal #00A660, onyx #111111, paper #FFFFFF,
- * paperDim #F9F9F9, stone #6B7280, green #A6FA30 - see src/lib/theme.ts.
+ * paperDim #F9F9F9, stone #6B7280, green #A6FA30, orange #FF5C34 (secondary
+ * links only, added after the original palette) - see src/lib/theme.ts.
  *
  * Light is the default (paper cards on a paperDim page, onyx text). Dark
  * flips to an onyx page - surface/surface2 there are onyx tinted a few
