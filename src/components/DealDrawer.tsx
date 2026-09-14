@@ -626,7 +626,7 @@ export function DealDrawer({
           <div className="space-y-2.5">
             <Section
               code="1"
-              title={prospectStage?.label ?? "Prospect identifié"}
+              title={prospectStage?.label ?? "Prospect"}
               icon={stageIcon("prospect")}
               active={localDeal.stage_id === prospectStage?.id}
               defaultOpen={localDeal.stage_id === prospectStage?.id}
@@ -669,7 +669,7 @@ export function DealDrawer({
 
             <Section
               code="2"
-              title={contactStage?.label ?? "Premier contact"}
+              title={contactStage?.label ?? "Contact"}
               icon={stageIcon("contact")}
               active={localDeal.stage_id === contactStage?.id}
               defaultOpen={localDeal.stage_id === contactStage?.id}
@@ -700,7 +700,7 @@ export function DealDrawer({
 
             <Section
               code="3"
-              title={rencontreStage?.label ?? "Rencontre planifiée"}
+              title={rencontreStage?.label ?? "Rencontre"}
               icon={stageIcon("rencontre")}
               active={localDeal.stage_id === rencontreStage?.id}
               defaultOpen={localDeal.stage_id === rencontreStage?.id}
@@ -766,7 +766,7 @@ export function DealDrawer({
 
             <Section
               code="4"
-              title={propositionStage?.label ?? "Proposition envoyée"}
+              title={propositionStage?.label ?? "Proposition"}
               icon={stageIcon("proposition")}
               active={localDeal.stage_id === propositionStage?.id}
               defaultOpen={localDeal.stage_id === propositionStage?.id}
@@ -859,7 +859,7 @@ export function DealDrawer({
 
             <Section
               code="6"
-              title={gagneStage?.label ?? "Fermé — gagné"}
+              title={gagneStage?.label ?? "Gagné"}
               icon={stageIcon("gagne")}
               active={localDeal.stage_id === gagneStage?.id}
               defaultOpen={localDeal.stage_id === gagneStage?.id}
@@ -901,7 +901,7 @@ export function DealDrawer({
 
             <Section
               code="7"
-              title={perduStage?.label ?? "Fermé — perdu"}
+              title={perduStage?.label ?? "Perdu"}
               icon={stageIcon("perdu")}
               active={localDeal.stage_id === perduStage?.id}
               defaultOpen={localDeal.stage_id === perduStage?.id}
