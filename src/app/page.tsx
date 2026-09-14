@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { CalendarClock, Download, LogOut, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -226,14 +225,7 @@ export default function DashboardPage() {
       <header className="border-b border-border/15 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center">
-            <Image
-              src="/loki-coach-logo.png"
-              alt="LOKI Coach"
-              width={1541}
-              height={68}
-              priority
-              className="h-6 sm:h-7 w-auto"
-            />
+            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="h-6 sm:h-7 w-auto" />
           </div>
           <div className="flex items-center gap-2">
             <button

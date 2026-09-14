@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
 
@@ -41,14 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center mb-8">
           <div className="bg-onyx rounded-lg px-4 py-2 inline-flex items-center">
-            <Image
-              src="/loki-coach-logo.png"
-              alt="LOKI Coach"
-              width={1541}
-              height={68}
-              priority
-              className="h-7 sm:h-8 w-auto"
-            />
+            <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="h-7 sm:h-8 w-auto" />
           </div>
         </div>
 
