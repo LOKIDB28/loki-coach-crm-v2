@@ -376,7 +376,7 @@ export function DealDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm">
-      <div className="w-full sm:max-w-xl h-full bg-bg/80 backdrop-blur-md border-l border-border/10 overflow-y-auto">
+      <div className="w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border/15 px-5 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-text truncate">

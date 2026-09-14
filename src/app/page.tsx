@@ -268,6 +268,17 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen">
+      {/* Very subtle brand gradient wash behind the whole page - purely so
+          floating glass surfaces (DealDrawer, NewDealModal) have something
+          with actual visual texture to blur; a flat bg-onyx/bg-paperDim
+          backdrop made backdrop-blur read as almost no effect at all. */}
+      <div
+        className="fixed inset-0 -z-10 pointer-events-none"
+        style={{
+          background: "linear-gradient(135deg, #090909 0%, #007D48 50%, #00A660 100%)",
+          opacity: 0.06,
+        }}
+      />
       <header className="border-b border-border/15 bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="bg-onyx rounded-lg px-3 py-1.5 inline-flex items-center">
