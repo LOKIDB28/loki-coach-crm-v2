@@ -309,7 +309,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleExport}
-              className="text-[11px] text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
+              className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
             >
               Sauvegarde complète (JSON)
             </button>
@@ -369,14 +369,14 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setShowRecap((v) => !v)}
-            className="text-xs font-medium text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
+            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
           >
             {showRecap ? "Masquer le tableau récap" : "Afficher le tableau récap"}
           </button>
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
-            className="text-xs font-medium text-orange hover:text-orange/80 underline underline-offset-2 transition-colors duration-150"
+            className="inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-[11px] text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
           >
             {showArchived ? "Retour aux dossiers actifs" : "Afficher les dossiers archivés"}
           </button>
