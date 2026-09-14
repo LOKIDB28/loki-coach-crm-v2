@@ -2,7 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, CalendarClock, Download, LogOut, MoreHorizontal, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
+import Link from "next/link";
+import {
+  Archive,
+  BarChart3,
+  CalendarClock,
+  Download,
+  LogOut,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  Table2,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   addActivity,
@@ -317,6 +330,12 @@ export default function DashboardPage() {
               <Plus size={16} />
               <span className="hidden sm:inline">Nouveau client</span>
             </button>
+            <Link
+              href="/intelligence"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+            >
+              <BarChart3 size={14} /> LOKI Intelligence
+            </Link>
             <button
               type="button"
               onClick={handleExport}
@@ -347,6 +366,14 @@ export default function DashboardPage() {
                       header row, instead of a fixed width that can overflow
                       past the left edge. */}
                   <div className="fixed left-4 right-4 top-20 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
+                    <Link
+                      href="/intelligence"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-teal hover:bg-surface2"
+                    >
+                      <BarChart3 size={16} /> LOKI Intelligence
+                    </Link>
+                    <div className="my-1 border-t border-border/15" />
                     <button
                       type="button"
                       onClick={() => {

@@ -148,3 +148,22 @@ export interface Activity {
 export interface ActivityWithAuthor extends Activity {
   author: Profile | null;
 }
+
+// Read-only rows from loki-crm-prod's reporting views (public.v_sources,
+// public.v_forecast_par_rep) - not covered by RLS policies/grants specific
+// to this app, they inherit the same "interne" SELECT access as the base
+// tables. Used only by the LOKI Intelligence section.
+
+export interface SourceBreakdownRow {
+  source: string;
+  nb_deals: number;
+  gagnes: number;
+  revenus: number;
+}
+
+export interface ForecastByRepRow {
+  proprietaire: string;
+  nb_deals: number;
+  valeur_brute: number;
+  valeur_ponderee: number;
+}

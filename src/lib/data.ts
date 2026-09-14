@@ -6,9 +6,11 @@ import type {
   Contact,
   Deal,
   DealWithContact,
+  ForecastByRepRow,
   NewContact,
   PipelineStage,
   Profile,
+  SourceBreakdownRow,
 } from "./types";
 
 export async function fetchProfiles(supabase: SupabaseClient): Promise<Profile[]> {
@@ -183,4 +185,41 @@ export async function fetchExportPayload(supabase: SupabaseClient): Promise<Expo
     deals: (deals ?? []) as Deal[],
     activities: (activities ?? []) as Activity[],
   };
+}
+
+// --- LOKI Intelligence ---------------------------------------------------
+
+/**
+ * One row per non-empty contacts.province_etat value, with a count -
+ * grouped client-side (365 rows, trivial) rather than via a dedicated view,
+ * since there's no existing one for this and the dataset is tiny.
+ */
+export async function fetchProvinceBreakdown(
+  supabase: SupabaseClient
+): Promise<{ province: string; count: number }[]> {
+  const { data, error } = await supabase.from("contacts").select("province_etat");
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { province_etat: string | null }[]) {
+    const key = row.province_etat?.trim();
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([province, count]) => ({ province, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** public.v_sources - see supabase/migrations/0006_grant_reporting_views.sql. */
+export async function fetchSourceBreakdown(supabase: SupabaseClient): Promise<SourceBreakdownRow[]> {
+  const { data, error } = await supabase.from("v_sources").select("*");
+  if (error) throw error;
+  return (data ?? []) as SourceBreakdownRow[];
+}
+
+/** public.v_forecast_par_rep - see supabase/migrations/0006_grant_reporting_views.sql. */
+export async function fetchForecastByRep(supabase: SupabaseClient): Promise<ForecastByRepRow[]> {
+  const { data, error } = await supabase.from("v_forecast_par_rep").select("*");
+  if (error) throw error;
+  return (data ?? []) as ForecastByRepRow[];
 }
