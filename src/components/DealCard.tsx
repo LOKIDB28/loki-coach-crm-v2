@@ -79,12 +79,19 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
         )}
       </div>
 
+      {/* Colors here are RELANCE_COLORS (lib/theme.ts) - dangerRed #D91A2A /
+          infoBlue #1A6FBF, outside the brand palette by explicit request,
+          reserved to these two states only. Rounded-full pill + persistent
+          fill + clock icon is deliberately unlike DealDrawer's "Marquer
+          perdu" (rounded-lg outline button, XCircle, Tailwind red-400/500,
+          no fill until hover) so the two never read as the same control
+          despite both living in the red family. */}
       {(overdue || soon) && (
         <div
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] w-fit ${
+          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] w-fit ${
             overdue
-              ? "bg-orange/15 text-orange font-semibold"
-              : "border border-orange/30 bg-orange/5 text-orange font-medium"
+              ? "bg-[#D91A2A]/15 border border-[#D91A2A]/30 text-[#D91A2A] font-semibold"
+              : "bg-[#1A6FBF]/10 border border-[#1A6FBF]/20 text-[#1A6FBF] font-medium"
           }`}
         >
           <Clock size={12} />

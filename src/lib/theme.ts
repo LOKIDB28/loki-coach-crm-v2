@@ -12,6 +12,23 @@ export const COLORS = {
   orange: "#FF5C34", // liens secondaires discrets (JSON backup, toggles récap/archives) - added outside the original strict palette, by explicit request
 } as const;
 
+// Outside the official brand palette above (teal/onyx/paper/stone/vert vif)
+// - reserved exclusively for the DealCard follow-up ("relance") badge's two
+// time-urgency states, by explicit request. Not for any other use case; a
+// new need for red/blue elsewhere should get its own explicit exception,
+// not silently reuse these. Tailwind classes reference these hexes directly
+// via arbitrary-value syntax (e.g. bg-[#D91A2A]/15) rather than through this
+// export, since Tailwind's JIT needs the literal hex in the class string -
+// this object exists so the two values have one documented source of truth
+// instead of being repeated as bare strings at each call site.
+export const RELANCE_COLORS = {
+  dangerRed: "#D91A2A", // "En retard" - deliberately a different red than
+  // DealDrawer's "Marquer perdu" outline button (Tailwind red-400/500) and
+  // DealCard's client-dupe warning (Tailwind red-500) - see both files for
+  // the shape/fill differences that also keep this visually distinct.
+  infoBlue: "#1A6FBF", // "Bientôt" (<=48h)
+} as const;
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =
