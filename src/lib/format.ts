@@ -60,6 +60,20 @@ export function isOverdue(value: string | null | undefined): boolean {
   return d.getTime() < Date.now();
 }
 
+/** Whole days since an overdue next_action_at - only meaningful when isOverdue(value) is true. */
+export function daysOverdue(value: string): number {
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
+}
+
+/** True when value is in the future but within the next `hours` hours. */
+export function isWithinHours(value: string | null | undefined, hours: number): boolean {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const diffMs = d.getTime() - Date.now();
+  return diffMs >= 0 && diffMs <= hours * 60 * 60 * 1000;
+}
+
 /**
  * Extracts a human-readable message from a caught error. Supabase's
  * PostgrestError/AuthError objects carry a real `.message` (e.g.

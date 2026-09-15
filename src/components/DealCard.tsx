@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, Mail, MapPin, Phone } from "lucide-react";
+import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
-import { formatCurrency } from "@/lib/format";
+import { daysOverdue, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
 interface DealCardProps {
@@ -24,6 +24,9 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
       : stage?.code === "perdu"
       ? "bg-stone/15 text-stone"
       : "bg-surface2 text-teal";
+
+  const overdue = isOverdue(deal.next_action_at);
+  const soon = !overdue && isWithinHours(deal.next_action_at, 48);
 
   return (
     <button
@@ -75,6 +78,23 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
           </div>
         )}
       </div>
+
+      {(overdue || soon) && (
+        <div
+          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] w-fit ${
+            overdue
+              ? "bg-orange/15 text-orange font-semibold"
+              : "border border-orange/30 bg-orange/5 text-orange font-medium"
+          }`}
+        >
+          <Clock size={12} />
+          {overdue
+            ? daysOverdue(deal.next_action_at!) >= 1
+              ? `En retard (${daysOverdue(deal.next_action_at!)}j)`
+              : "En retard"
+            : `Bientôt · ${formatDateTime(deal.next_action_at)}`}
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-2 border-t border-border/15">
         <span className="text-xs text-textSoft truncate min-w-0">{ownerName ?? "Non assigné"}</span>
