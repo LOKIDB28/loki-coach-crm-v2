@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { rateColor } from "@/lib/domain";
+import { CHART_TOOLTIP_STYLE, COLORS } from "@/lib/theme";
 import type { Deal } from "@/lib/types";
 
 interface RateShareChartProps {
@@ -44,14 +46,15 @@ export function RateShareChart({ title, description, deals, totalDeals }: RateSh
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: unknown, name: unknown) => [`${value} deals`, name] as [string, string]}
-              contentStyle={{
-                background: "rgb(var(--surface))",
-                border: "1px solid rgb(var(--border) / 0.2)",
-                borderRadius: 8,
-                fontSize: 12,
-                color: "rgb(var(--text))",
-              }}
+              {...CHART_TOOLTIP_STYLE}
+              formatter={(value: unknown, name: unknown) =>
+                [
+                  <span key="v">
+                    <span style={{ color: COLORS.orange, fontWeight: 700 }}>{value as ReactNode}</span> deals
+                  </span>,
+                  name,
+                ] as [ReactNode, ReactNode]
+              }
             />
             {/* No on-chart labels - with several thin adjacent slices (8/10/15/20%),
                 recharts' default label placement overlapped (reported: 0%/1%).

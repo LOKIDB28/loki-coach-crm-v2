@@ -16,3 +16,28 @@ export const COLORS = {
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+// Shared recharts <Tooltip> chrome for every LOKI Intelligence chart. Once a
+// <Bar> only colors itself through per-datum <Cell>s (no flat `fill` on the
+// <Bar> itself), recharts has no series color to fall back on for the
+// tooltip's item text and silently renders it in its own default black -
+// unreadable on the app's dark surface. labelStyle/itemStyle below pin both
+// the category label and the item row to the app's own text tokens instead
+// of leaving either to that default.
+export const CHART_TOOLTIP_STYLE = {
+  contentStyle: {
+    background: "rgb(var(--surface-2))",
+    border: "1px solid rgb(var(--border) / 0.2)",
+    borderRadius: 8,
+    fontSize: 12,
+    padding: "8px 10px",
+  },
+  labelStyle: {
+    color: "rgb(var(--text))",
+    fontWeight: 600,
+    marginBottom: 2,
+  },
+  itemStyle: {
+    color: "rgb(var(--text-soft))",
+  },
+} as const;

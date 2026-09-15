@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { COLORS } from "@/lib/theme";
+import { CHART_TOOLTIP_STYLE, COLORS } from "@/lib/theme";
 import type { PipelineStage } from "@/lib/types";
 
 interface PipelineFunnelChartProps {
@@ -35,13 +36,15 @@ export function PipelineFunnelChart({ stages, counts }: PipelineFunnelChartProps
           tickLine={false}
         />
         <Tooltip
-          contentStyle={{
-            background: "rgb(var(--surface))",
-            border: "1px solid rgb(var(--border) / 0.2)",
-            borderRadius: 8,
-            fontSize: 12,
-            color: "rgb(var(--text))",
-          }}
+          {...CHART_TOOLTIP_STYLE}
+          formatter={(value: unknown, name: unknown) =>
+            [
+              <span key="v" style={{ color: COLORS.orange, fontWeight: 700 }}>
+                {value as ReactNode}
+              </span>,
+              name,
+            ] as [ReactNode, ReactNode]
+          }
           cursor={{ fill: "rgb(var(--border) / 0.08)" }}
         />
         <Bar dataKey="count" radius={[0, 4, 4, 0]}>
