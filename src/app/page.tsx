@@ -43,6 +43,13 @@ import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, NewCont
 
 type ViewMode = "pipeline" | "suivis";
 
+// Hidden 2026-09-15: niveau_interet is filled on ~1/370 deals, so the
+// grouping had no visible effect. State/logic below are untouched - only
+// the checkbox's visibility is gated, so re-enabling later is a one-line
+// flip. See README "Dette technique / à faire" for the reactivation
+// threshold.
+const SHOW_GROUP_BY_INTEREST = false;
+
 export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -530,15 +537,17 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto min-h-11 py-2">
-                <input
-                  type="checkbox"
-                  checked={groupByInterest}
-                  onChange={(e) => setGroupByInterest(e.target.checked)}
-                  className="accent-teal w-4 h-4"
-                />
-                Grouper par intérêt
-              </label>
+              {SHOW_GROUP_BY_INTEREST && (
+                <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto min-h-11 py-2">
+                  <input
+                    type="checkbox"
+                    checked={groupByInterest}
+                    onChange={(e) => setGroupByInterest(e.target.checked)}
+                    className="accent-teal w-4 h-4"
+                  />
+                  Grouper par intérêt
+                </label>
+              )}
             </div>
 
             {loading ? (

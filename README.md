@@ -258,3 +258,14 @@ being applied) — the `handle_new_user`-equivalent trigger, the RLS
 policies as written, and the
 magic-link redirect flow end to end.
 
+## Dette technique / à faire
+
+- **Grouper par intérêt masqué le 2026-09-15** — à réactiver une fois que
+  `niveau_interet` est rempli sur un nombre significatif de deals (seuil
+  suggéré : au moins 15-20% des deals actifs). Au moment du masquage, un
+  seul deal sur 370 avait ce champ rempli, donc cocher la case ne
+  produisait presque aucun effet visible. Code non supprimé — le contrôle
+  (`src/app/page.tsx`) est gardé derrière une constante
+  `SHOW_GROUP_BY_INTEREST = false`, à repasser à `true` pour le
+  réactiver.
+
