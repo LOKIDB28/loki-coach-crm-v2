@@ -15,6 +15,8 @@ import { getErrorMessage } from "@/lib/format";
 import { ForecastCard } from "@/components/intelligence/ForecastCard";
 import { PipelineFunnelChart } from "@/components/intelligence/PipelineFunnelChart";
 import { ProvinceBarChart } from "@/components/intelligence/ProvinceBarChart";
+import { RateFunnelChart } from "@/components/intelligence/RateFunnelChart";
+import { RateShareChart } from "@/components/intelligence/RateShareChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
 import type { DealWithContact, ForecastByRepRow, PipelineStage, SourceBreakdownRow } from "@/lib/types";
 
@@ -62,6 +64,9 @@ export default function IntelligencePage() {
   }, [deals]);
 
   const dealsWithMontant = useMemo(() => deals.filter((d) => d.montant !== null).length, [deals]);
+
+  const dealsWithRate = useMemo(() => deals.filter((d) => d.rate_percent !== null), [deals]);
+  const qualifiedDeals = useMemo(() => dealsWithRate.filter((d) => d.rate_percent! >= 10), [dealsWithRate]);
 
   return (
     <div className="min-h-screen">
@@ -111,6 +116,28 @@ export default function IntelligencePage() {
               <h2 className="text-sm font-semibold text-text mb-1">Forecast pondéré</h2>
               <p className="text-xs text-textSoft mb-4">Montant × probabilité de l&apos;étape, étapes ouvertes seulement.</p>
               <ForecastCard rows={forecast} totalDeals={deals.length} dealsWithMontant={dealsWithMontant} />
+            </section>
+
+            <section className="bg-surface border border-border/15 rounded-xl p-5">
+              <RateShareChart
+                title="Répartition par taux (tous)"
+                description="Tous les deals ayant un taux enregistré, groupés par valeur."
+                deals={dealsWithRate}
+                totalDeals={deals.length}
+              />
+            </section>
+
+            <section className="bg-surface border border-border/15 rounded-xl p-5">
+              <RateShareChart
+                title="Opportunités qualifiées (≥10%)"
+                description="Même donnée, en excluant les leads froids/bruts (0, 1, 5, 8%)."
+                deals={qualifiedDeals}
+                totalDeals={deals.length}
+              />
+            </section>
+
+            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <RateFunnelChart deals={dealsWithRate} totalDeals={deals.length} />
             </section>
           </div>
         )}

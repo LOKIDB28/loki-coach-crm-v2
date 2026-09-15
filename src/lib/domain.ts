@@ -175,3 +175,21 @@ export function findCoachMatchesForDeal(
   const pool = deals.map((d) => ({ ...toDupeCandidate(d), _ref: d }));
   return findCoachMatches(candidateDupe, pool, excludeId).map((m) => m._ref);
 }
+
+// Fixed ascending order for deals.rate_percent, used only to assign a
+// stable color intensity per value across the LOKI Intelligence rate
+// charts - a value's shade never changes depending on which subset of
+// deals happens to be displayed alongside it (e.g. "10%" looks the same
+// in the "tous" pie and the "qualifiées ≥10%" one). Values outside this
+// list (shouldn't happen - it's the full set seen in the source data)
+// fall back to the darkest shade rather than erroring.
+const RATE_LEGEND = [0, 1, 5, 8, 10, 15, 20, 35, 95, 99] as const;
+
+/** Single-hue teal intensity scale for rate_percent charts - darker = more advanced, never a multi-color palette. */
+export function rateColor(value: number): string {
+  const idx = RATE_LEGEND.indexOf(value as (typeof RATE_LEGEND)[number]);
+  const pos = idx === -1 ? RATE_LEGEND.length - 1 : idx;
+  const t = pos / (RATE_LEGEND.length - 1);
+  const alpha = 0.15 + t * 0.85;
+  return `rgba(0, 166, 96, ${alpha.toFixed(2)})`;
+}

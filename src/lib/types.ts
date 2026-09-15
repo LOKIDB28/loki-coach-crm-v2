@@ -123,6 +123,11 @@ export interface Deal {
 
   // Added by 0005_add_deals_archived.sql.
   archived: boolean;
+
+  // Added by 0007_add_and_populate_deals_rate_percent.sql - backfilled once
+  // from staging_import.rate, not maintained by the app. Independent of
+  // stage_id/pipeline_stages.probability, not a replacement for either.
+  rate_percent: number | null;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {
