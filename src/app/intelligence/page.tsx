@@ -133,6 +133,7 @@ export default function IntelligencePage() {
                 description="Même donnée, en excluant les leads froids/bruts (0, 1, 5, 8%)."
                 deals={qualifiedDeals}
                 totalDeals={deals.length}
+                scaleToSubset
               />
             </section>
 

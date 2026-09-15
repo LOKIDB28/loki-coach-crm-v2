@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { rateColor } from "@/lib/domain";
+import { rateColor, subsetRateColors } from "@/lib/domain";
 import { CHART_TOOLTIP_STYLE, COLORS } from "@/lib/theme";
 import type { Deal } from "@/lib/types";
 
@@ -11,6 +11,18 @@ interface RateShareChartProps {
   description: string;
   deals: Pick<Deal, "rate_percent">[];
   totalDeals: number;
+  /**
+   * True for a chart already filtered to a subset of rate_percent values
+   * (e.g. the >=10% qualified view) - colors are then positioned against
+   * only the values actually present here, so the subset's own low/high
+   * still span the full intensity range instead of compressing into
+   * whichever narrow slice of the full scale they occupy (all >=10% values
+   * sit in RATE_LEGEND's upper half, which rateColor alone would render as
+   * a handful of nearly-identical dark shades). Leave false for a chart
+   * that shows - or could show - every step, so a value's shade stays fixed
+   * across those.
+   */
+  scaleToSubset?: boolean;
 }
 
 /**
@@ -19,7 +31,7 @@ interface RateShareChartProps {
  * a hardcoded bucket list, so a value with 0 real deals just doesn't
  * appear (no empty/misleading slice).
  */
-export function RateShareChart({ title, description, deals, totalDeals }: RateShareChartProps) {
+export function RateShareChart({ title, description, deals, totalDeals, scaleToSubset }: RateShareChartProps) {
   const counts = new Map<number, number>();
   for (const d of deals) {
     if (d.rate_percent === null) continue;
@@ -29,6 +41,7 @@ export function RateShareChart({ title, description, deals, totalDeals }: RateSh
     .map(([value, count]) => ({ value, label: `${value}%`, count }))
     .sort((a, b) => a.value - b.value);
   const shown = data.reduce((sum, d) => sum + d.count, 0);
+  const subsetColors = scaleToSubset ? subsetRateColors(data.map((d) => d.value)) : null;
 
   return (
     <div>
@@ -42,7 +55,12 @@ export function RateShareChart({ title, description, deals, totalDeals }: RateSh
           <PieChart>
             <Pie data={data} dataKey="count" nameKey="label" innerRadius={50} outerRadius={95} paddingAngle={1}>
               {data.map((d) => (
-                <Cell key={d.value} fill={rateColor(d.value)} stroke="rgb(var(--surface))" strokeWidth={2} />
+                <Cell
+                  key={d.value}
+                  fill={subsetColors ? subsetColors.get(d.value)! : rateColor(d.value)}
+                  stroke="rgb(var(--surface))"
+                  strokeWidth={2}
+                />
               ))}
             </Pie>
             <Tooltip

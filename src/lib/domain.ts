@@ -178,13 +178,18 @@ export function findCoachMatchesForDeal(
 }
 
 // Fixed ascending order for deals.rate_percent, used only to assign a
-// stable color intensity per value across the LOKI Intelligence rate
-// charts - a value's shade never changes depending on which subset of
-// deals happens to be displayed alongside it (e.g. "10%" looks the same
-// in the "tous" pie and the "qualifiées ≥10%" one). Values outside this
-// list (shouldn't happen - it's the full set seen in the source data)
-// fall back to the darkest shade rather than erroring.
+// stable color intensity per value across charts that show (or can show)
+// every step - the pipeline-wide "tous" pie and the rate funnel. A value's
+// shade is fixed here regardless of which of those two it appears in.
+// Values outside this list (shouldn't happen - it's the full set seen in
+// the source data) fall back to the darkest shade rather than erroring.
 const RATE_LEGEND = [0, 1, 5, 8, 10, 15, 20, 35, 95, 99] as const;
+
+function easedAlpha(pos: number, span: number): number {
+  const t = span <= 0 ? 1 : pos / span;
+  const eased = 1 - Math.pow(1 - t, 2);
+  return 0.1 + eased * 0.9;
+}
 
 /**
  * Single-hue teal intensity scale for rate_percent charts - darker = more
@@ -192,15 +197,36 @@ const RATE_LEGEND = [0, 1, 5, 8, 10, 15, 20, 35, 95, 99] as const;
  * than linear: most real deals cluster at the low end (0/1/5/8/10%), so
  * that's where the biggest jumps between adjacent steps need to be -  a
  * uniform 0.15-1.0 linear ramp made those specific values look almost
- * identical, which is the opposite of what a reader needs there.
+ * identical, which is the opposite of what a reader needs there. Position is
+ * read off the full RATE_LEGEND, so use this only for a chart that shows (or
+ * could show) every step - a chart already filtered to a subset should use
+ * subsetRateColors instead, or values that happen to cluster in one region
+ * of RATE_LEGEND will all render as nearly the same shade again.
  */
 export function rateColor(value: number): string {
   const idx = RATE_LEGEND.indexOf(value as (typeof RATE_LEGEND)[number]);
   const pos = idx === -1 ? RATE_LEGEND.length - 1 : idx;
-  const t = pos / (RATE_LEGEND.length - 1);
-  const eased = 1 - Math.pow(1 - t, 2);
-  const alpha = 0.1 + eased * 0.9;
+  const alpha = easedAlpha(pos, RATE_LEGEND.length - 1);
   return `rgba(0, 166, 96, ${alpha.toFixed(2)})`;
+}
+
+/**
+ * Same eased intensity curve as rateColor, but positioned against only the
+ * values actually present in a filtered subset (e.g. the >=10% qualified
+ * view) instead of the full RATE_LEGEND. Without this, a subset whose values
+ * all sit in one narrow region of the full scale (10/15/20/95%, all in the
+ * upper half of RATE_LEGEND) renders as a handful of nearly-identical dark
+ * shades - the subset's own lowest and highest values should always span
+ * the full 0.1-1.0 range.
+ */
+export function subsetRateColors(values: number[]): Map<number, string> {
+  const sorted = [...new Set(values)].sort((a, b) => a - b);
+  const map = new Map<number, string>();
+  sorted.forEach((v, i) => {
+    const alpha = easedAlpha(i, sorted.length - 1);
+    map.set(v, `rgba(0, 166, 96, ${alpha.toFixed(2)})`);
+  });
+  return map;
 }
 
 // Fixed 6-hue categorical palette for charts with independent, unordered
