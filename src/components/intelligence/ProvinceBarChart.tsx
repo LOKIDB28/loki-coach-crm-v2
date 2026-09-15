@@ -1,7 +1,7 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { COLORS } from "@/lib/theme";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { assignCategoricalColors } from "@/lib/domain";
 
 interface ProvinceBarChartProps {
   data: { province: string; count: number }[];
@@ -20,6 +20,7 @@ export function ProvinceBarChart({ data }: ProvinceBarChartProps) {
   const top = sorted.slice(0, MAX_ROWS);
   const restCount = sorted.slice(MAX_ROWS).reduce((sum, d) => sum + d.count, 0);
   const chartData = restCount > 0 ? [...top, { province: "Autres", count: restCount }] : top;
+  const colors = assignCategoricalColors(chartData.map((d) => d.province));
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(220, chartData.length * 32)}>
@@ -50,7 +51,11 @@ export function ProvinceBarChart({ data }: ProvinceBarChartProps) {
           }}
           cursor={{ fill: "rgb(var(--border) / 0.08)" }}
         />
-        <Bar dataKey="count" fill={COLORS.teal} radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+          {chartData.map((d) => (
+            <Cell key={d.province} fill={colors.get(d.province)} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

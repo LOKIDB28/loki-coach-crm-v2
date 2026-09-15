@@ -38,16 +38,7 @@ export function RateShareChart({ title, description, deals, totalDeals }: RateSh
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
-            <Pie
-              data={data}
-              dataKey="count"
-              nameKey="label"
-              innerRadius={50}
-              outerRadius={95}
-              paddingAngle={1}
-              label={({ name, percent }) => `${name} (${Math.round((percent ?? 0) * 100)}%)`}
-              labelLine={{ stroke: "rgb(var(--border) / 0.4)" }}
-            >
+            <Pie data={data} dataKey="count" nameKey="label" innerRadius={50} outerRadius={95} paddingAngle={1}>
               {data.map((d) => (
                 <Cell key={d.value} fill={rateColor(d.value)} stroke="rgb(var(--surface))" strokeWidth={2} />
               ))}
@@ -62,9 +53,21 @@ export function RateShareChart({ title, description, deals, totalDeals }: RateSh
                 color: "rgb(var(--text))",
               }}
             />
+            {/* No on-chart labels - with several thin adjacent slices (8/10/15/20%),
+                recharts' default label placement overlapped (reported: 0%/1%).
+                The legend shows the same count+percentage per slice with zero
+                collision risk, regardless of how many thin slices there are. */}
             <Legend
-              wrapperStyle={{ fontSize: 12, color: "rgb(var(--text-soft))" }}
-              formatter={(value) => <span style={{ color: "rgb(var(--text-soft))" }}>{value}</span>}
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(value, entry) => {
+                const count = (entry?.payload as unknown as { count: number } | undefined)?.count ?? 0;
+                const pct = shown > 0 ? Math.round((count / shown) * 100) : 0;
+                return (
+                  <span style={{ color: "rgb(var(--text-soft))" }}>
+                    {value} — {count} ({pct}%)
+                  </span>
+                );
+              }}
             />
           </PieChart>
         </ResponsiveContainer>

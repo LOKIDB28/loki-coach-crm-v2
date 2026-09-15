@@ -16,6 +16,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
+import { COLORS } from "./theme";
 import type { Contact, Deal, DealWithContact } from "./types";
 
 /** Icon per pipeline_stages.code - extend when a new stage code is added in Supabase. */
@@ -185,11 +186,81 @@ export function findCoachMatchesForDeal(
 // fall back to the darkest shade rather than erroring.
 const RATE_LEGEND = [0, 1, 5, 8, 10, 15, 20, 35, 95, 99] as const;
 
-/** Single-hue teal intensity scale for rate_percent charts - darker = more advanced, never a multi-color palette. */
+/**
+ * Single-hue teal intensity scale for rate_percent charts - darker = more
+ * advanced, never a multi-color palette. Eased (quadratic ease-out) rather
+ * than linear: most real deals cluster at the low end (0/1/5/8/10%), so
+ * that's where the biggest jumps between adjacent steps need to be -  a
+ * uniform 0.15-1.0 linear ramp made those specific values look almost
+ * identical, which is the opposite of what a reader needs there.
+ */
 export function rateColor(value: number): string {
   const idx = RATE_LEGEND.indexOf(value as (typeof RATE_LEGEND)[number]);
   const pos = idx === -1 ? RATE_LEGEND.length - 1 : idx;
   const t = pos / (RATE_LEGEND.length - 1);
-  const alpha = 0.15 + t * 0.85;
+  const eased = 1 - Math.pow(1 - t, 2);
+  const alpha = 0.1 + eased * 0.9;
   return `rgba(0, 166, 96, ${alpha.toFixed(2)})`;
+}
+
+// Fixed 6-hue categorical palette for charts with independent, unordered
+// categories (source, province/state) - unlike the rate charts above,
+// there's no "more advanced" ordering here, so a single-hue intensity scale
+// would just look like noise. Every hue is still only teal/green/stone at
+// full or half opacity, or teal mixed toward onyx for a darker shade -
+// never a color outside the brand palette.
+function mix(hexA: string, hexB: string, t: number): string {
+  const a = hexA.match(/\w\w/g)!.map((h) => parseInt(h, 16));
+  const b = hexB.match(/\w\w/g)!.map((h) => parseInt(h, 16));
+  const [r, g, bch] = a.map((c, i) => Math.round(c + (b[i]! - c) * t));
+  return `rgb(${r}, ${g}, ${bch})`;
+}
+
+const CATEGORICAL_PALETTE = [
+  COLORS.teal, // 1. teal plein
+  COLORS.green, // 2. vert vif
+  `${COLORS.teal}80`, // 3. teal à 50% (80 hex = ~50% alpha)
+  COLORS.stone, // 4. stone gray
+  mix(COLORS.teal, COLORS.onyx, 0.4), // 5. teal foncé (mélangé avec onyx)
+  `${COLORS.green}80`, // 6. vert vif à 50%
+];
+
+/**
+ * Assigns each name in the list a color from CATEGORICAL_PALETTE, keyed by a
+ * hash of the name so a given category (e.g. "Facebook") lands on the same
+ * hue every time it's hashed. A pure hash alone collides often with only 6
+ * hues available against real category counts (province/source charts show
+ * 8-12 distinct values at once) - two of the biggest bars ending up the same
+ * color defeats the point of a categorical palette. So each name's hash slot
+ * is only a starting point: if it's already taken by an earlier name in this
+ * same list, it probes forward to the next free slot. This guarantees every
+ * category is distinct as long as <= 6 are shown together (true for every
+ * chart today), while a name's color still only changes if which other
+ * names it's rendered alongside changes - not across every render. "Autres"
+ * is always stone gray, reserved before any hash assignment runs.
+ */
+export function assignCategoricalColors(names: string[]): Map<string, string> {
+  const n = CATEGORICAL_PALETTE.length;
+  const stoneIdx = CATEGORICAL_PALETTE.indexOf(COLORS.stone);
+  const used = new Set<number>();
+  const result = new Map<string, string>();
+  const ordered = [...names].sort((a, b) => (a === "Autres" ? -1 : b === "Autres" ? 1 : 0));
+  for (const name of ordered) {
+    let slot: number;
+    if (name === "Autres") {
+      slot = stoneIdx;
+    } else {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+      slot = hash % n;
+      let attempts = 0;
+      while (used.has(slot) && attempts < n) {
+        slot = (slot + 1) % n;
+        attempts++;
+      }
+    }
+    used.add(slot);
+    result.set(name, CATEGORICAL_PALETTE[slot]!);
+  }
+  return result;
 }
