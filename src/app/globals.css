@@ -78,3 +78,25 @@ button:active {
     animation-duration: 0.01ms !important;
   }
 }
+
+/*
+ * LOKI Intelligence province map (react-leaflet). The free/anonymous OSM
+ * tile server has no dark variant, and stays in its natural light rendering
+ * in both themes by design - the card's own dark surface/border around it
+ * (same treatment as every other chart on the page) is enough to integrate
+ * it visually, no need to force a theme onto the tiles themselves.
+ */
+
+/* Leaflet's own tooltip chrome is hardcoded white/black - override to match
+   the app's CHART_TOOLTIP_STYLE (lib/theme.ts) used everywhere else. */
+.leaflet-tooltip.loki-map-tooltip {
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--border) / 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  box-shadow: none;
+}
+.leaflet-tooltip.loki-map-tooltip::before {
+  border-top-color: rgb(var(--surface-2));
+}

@@ -15,6 +15,7 @@ import { getErrorMessage } from "@/lib/format";
 import { ForecastCard } from "@/components/intelligence/ForecastCard";
 import { PipelineFunnelChart } from "@/components/intelligence/PipelineFunnelChart";
 import { ProvinceBarChart } from "@/components/intelligence/ProvinceBarChart";
+import { ProvinceMap } from "@/components/intelligence/ProvinceMap";
 import { RateFunnelChart } from "@/components/intelligence/RateFunnelChart";
 import { RateShareChart } from "@/components/intelligence/RateShareChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
@@ -104,6 +105,15 @@ export default function IntelligencePage() {
                 Basé sur le champ province/état des contacts (ville n&apos;est pas géocodable - texte libre par région).
               </p>
               <ProvinceBarChart data={provinces} />
+            </section>
+
+            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <h2 className="text-sm font-semibold text-text mb-1">Carte des contacts par province/état</h2>
+              <p className="text-xs text-textSoft mb-4">
+                Un point par région (jamais par ville - texte libre non géocodable), taille proportionnelle au nombre
+                de contacts.
+              </p>
+              <ProvinceMap data={provinces} />
             </section>
 
             <section className="bg-surface border border-border/15 rounded-xl p-5">
