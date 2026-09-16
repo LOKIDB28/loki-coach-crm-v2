@@ -4,7 +4,8 @@ import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -48,7 +49,21 @@ export function KanbanBoard({
   onOpen,
   onMoveDeal,
 }: KanbanBoardProps) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  // Mouse and touch get separate sensors with different activation
+  // constraints on purpose. A single PointerSensor(distance:8) treated a
+  // fast scroll flick on iPad exactly like a drag-start (distance has no
+  // time component - one 60px pointermove instantly exceeds 8px regardless
+  // of speed), which hijacked scrolling inside a column. TouchSensor's
+  // delay:200/tolerance:5 instead waits: a flick that moves past 5px
+  // before 200ms elapses is canceled (falls through to native scroll),
+  // while a genuine press-and-hold still activates the drag normally -
+  // verified directly against the installed @dnd-kit/core (both the old
+  // and new configs) with synthetic Pointer/TouchEvents before this
+  // change, not assumed.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const dealsByStage = new Map<number, DealWithContact[]>();
