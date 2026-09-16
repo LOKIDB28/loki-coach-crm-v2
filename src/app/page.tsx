@@ -608,8 +608,12 @@ export default function DashboardPage() {
                 </label>
               )}
 
-              {/* Layout toggle - desktop only (dnd-kit's pointer-based drag
-                  isn't wired for touch gestures here), hidden entirely while
+              {/* Layout toggle - shown from the sm: breakpoint up (640px),
+                  which includes tablets - officially in scope, not just an
+                  accident of the breakpoint: touch drag/scroll was tested
+                  and fixed for iPad (see KanbanBoard's TouchSensor).
+                  True small-screen mobile stays unchanged (drawer, arrows,
+                  buttons) below that breakpoint. Hidden entirely while
                   viewing archives (dragging an archived deal between open
                   stages doesn't mean anything - see lib/view.ts). */}
               {!showArchived && (
