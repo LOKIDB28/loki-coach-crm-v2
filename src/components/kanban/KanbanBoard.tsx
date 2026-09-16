@@ -1,6 +1,16 @@
 "use client";
 
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { DealCard } from "@/components/DealCard";
 import { KanbanColumn } from "./KanbanColumn";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
@@ -39,14 +49,22 @@ export function KanbanBoard({
   onMoveDeal,
 }: KanbanBoardProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const dealsByStage = new Map<number, DealWithContact[]>();
   for (const stage of openStages) dealsByStage.set(stage.id, []);
   for (const d of deals) {
     dealsByStage.get(d.stage_id)?.push(d);
   }
+  const stageById = new Map(openStages.map((s) => [s.id, s]));
+  const activeDeal = activeId ? deals.find((d) => d.id === activeId) ?? null : null;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string);
+  }
 
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = event;
     if (!over) return;
     const stageId = over.data.current?.stageId as number | undefined;
@@ -57,7 +75,12 @@ export function KanbanBoard({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
       <div className="flex gap-3 overflow-x-auto pb-2">
         {openStages.map((stage) => (
           <KanbanColumn
@@ -71,6 +94,29 @@ export function KanbanBoard({
           />
         ))}
       </div>
+
+      {/* Portaled outside every column's overflow-y-auto clipping, so the
+          dragged card stays visible under the cursor for the whole
+          gesture instead of disappearing the moment it crosses its
+          source column's boundary (see KanbanCard for the full story). */}
+      <DragOverlay>
+        {activeDeal ? (
+          <div className="w-[280px] rotate-1 shadow-xl">
+            <DealCard
+              deal={activeDeal}
+              stage={stageById.get(activeDeal.stage_id)}
+              ownerName={
+                activeDeal.owner_id
+                  ? profileById.get(activeDeal.owner_id)?.nom ?? profileById.get(activeDeal.owner_id)?.email ?? null
+                  : null
+              }
+              hasClientDupe={dupeClientIds.has(activeDeal.id)}
+              hasCoachDupe={dupeCoachIds.has(activeDeal.id)}
+              onOpen={() => {}}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

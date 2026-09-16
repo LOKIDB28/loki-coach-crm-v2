@@ -1,7 +1,6 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { DealCard } from "@/components/DealCard";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
@@ -22,18 +21,21 @@ interface KanbanCardProps {
  * normally: the board's PointerSensor has an 8px activation distance (see
  * KanbanBoard), so a click that never moves 8px never becomes a drag in
  * the first place and the button's onClick fires as usual.
+ *
+ * Deliberately does NOT apply `transform` to this node while dragging - an
+ * earlier version did, which visually moved the real card, but every
+ * column scrolls internally (overflow-y-auto), and a translated child gets
+ * clipped the moment it's dragged past its own column's box: the card
+ * appeared to vanish under the cursor. KanbanBoard's <DragOverlay> now
+ * renders the actual moving copy, portaled outside every column's overflow
+ * clipping - this node just stays put as a dimmed placeholder marking
+ * where the card came from.
  */
 export function KanbanCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, onOpen }: KanbanCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: deal.id });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
-      {...listeners}
-      {...attributes}
-      className={`touch-none ${isDragging ? "opacity-50 z-10 relative" : ""}`}
-    >
+    <div ref={setNodeRef} {...listeners} {...attributes} className={`touch-none ${isDragging ? "opacity-30" : ""}`}>
       <DealCard
         deal={deal}
         stage={stage}
