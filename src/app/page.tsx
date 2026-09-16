@@ -8,6 +8,8 @@ import {
   BarChart3,
   CalendarClock,
   Download,
+  Kanban,
+  LayoutGrid,
   LogOut,
   MoreHorizontal,
   Plus,
@@ -32,9 +34,11 @@ import {
 } from "@/lib/data";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
+import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
 import { DealCard } from "@/components/DealCard";
 import { DealDrawer } from "@/components/DealDrawer";
 import { FollowUpsView } from "@/components/FollowUpsView";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
 import { RecapTable } from "@/components/RecapTable";
@@ -70,6 +74,8 @@ export default function DashboardPage() {
   const [showRecap, setShowRecap] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
+  // Independent from showArchived on purpose - see lib/view.ts.
+  const [viewLayout, setViewLayout] = useState<ViewLayout>("grid");
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newDealOpen, setNewDealOpen] = useState(false);
@@ -157,6 +163,23 @@ export default function DashboardPage() {
     const updated = await changeDealStage(supabase, selectedDeal.id, newStageId);
     setDeals((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)));
     await loadActivities(updated.id);
+  }
+
+  /**
+   * Pass 1 of the kanban board: updates optimistically so the card doesn't
+   * flicker back to its old column while the write is in flight, but
+   * doesn't roll back on failure yet - that (plus incremental loading and
+   * keyboard a11y) is the deliberately separate hardening pass agreed on
+   * before starting this one. A failed write still surfaces the existing
+   * error banner.
+   */
+  async function handleMoveDealStage(dealId: string, newStageId: number) {
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d)));
+    try {
+      await changeDealStage(supabase, dealId, newStageId);
+    } catch (err) {
+      setError(getErrorMessage(err, "Erreur lors du changement d'étape."));
+    }
   }
 
   async function handleAddNote(contenu: string) {
@@ -286,6 +309,31 @@ export default function DashboardPage() {
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
+
+  // Kanban is only ever actually shown per effectiveViewLayout (never while
+  // viewing archives - see lib/view.ts); this also governs whether the
+  // stage filter chip/PipelineBar renders, so it's never left masked but
+  // still "active" once you're back on the grid.
+  const layout = effectiveViewLayout(viewLayout, showArchived);
+
+  // Same as filteredDeals but WITHOUT the stage filter - stage is the
+  // columns themselves in kanban, so filtering to one stage first would
+  // leave every other column empty. Owner + search still apply per column,
+  // same as they apply to the grid.
+  const openStages = useMemo(() => stages.filter((s) => s.is_open).sort((a, b) => a.position - b.position), [stages]);
+  const kanbanDeals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return visibleDeals.filter((d) => {
+      if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
+      if (q) {
+        const name = fullName(d.contact).toLowerCase();
+        const email = (d.contact.email ?? "").toLowerCase();
+        const phone = (d.contact.telephone ?? "").toLowerCase();
+        if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [visibleDeals, activeOwnerId, search]);
 
   return (
     <div className="min-h-screen">
@@ -478,7 +526,13 @@ export default function DashboardPage() {
           />
         </div>
 
-        {viewMode === "pipeline" && (
+        {/* Hidden in kanban - the columns already are the stage filter, and
+            gating this on `layout` (not just viewLayout) means it comes
+            back the instant layout resolves to "grid" again, from either
+            switching the toggle or leaving archived mode - activeStage
+            itself is never touched either way, so it's immediately
+            clickable again, never stuck half-disabled. */}
+        {viewMode === "pipeline" && layout === "grid" && (
           <PipelineBar stages={stages} counts={stageCounts} activeStage={activeStage} onSelectStage={setActiveStage} />
         )}
 
@@ -522,9 +576,14 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {(activeStage !== null || activeOwnerId !== null || search) && (
+              {/* activeStage's chip is grid-only (kanban already shows every
+                  stage as a column - keeping the chip visible in kanban
+                  would misleadingly imply it's still filtering something).
+                  Owner/search chips stay visible in both, since kanban
+                  columns are filtered by both same as the grid. */}
+              {((layout === "grid" && activeStage !== null) || activeOwnerId !== null || search) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {activeStage !== null && (
+                  {layout === "grid" && activeStage !== null && (
                     <Chip label={`Étape: ${stageById.get(activeStage)?.label}`} onClear={() => setActiveStage(null)} />
                   )}
                   {activeOwnerId !== null && (
@@ -538,7 +597,7 @@ export default function DashboardPage() {
               )}
 
               {SHOW_GROUP_BY_INTEREST && (
-                <label className="flex items-center gap-2 text-xs font-medium text-textSoft ml-auto min-h-11 py-2">
+                <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
                   <input
                     type="checkbox"
                     checked={groupByInterest}
@@ -548,10 +607,49 @@ export default function DashboardPage() {
                   Grouper par intérêt
                 </label>
               )}
+
+              {/* Layout toggle - desktop only (dnd-kit's pointer-based drag
+                  isn't wired for touch gestures here), hidden entirely while
+                  viewing archives (dragging an archived deal between open
+                  stages doesn't mean anything - see lib/view.ts). */}
+              {!showArchived && (
+                <div className="hidden sm:flex items-center gap-1 ml-auto rounded-lg border border-border/20 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout("grid")}
+                    aria-label="Vue grille"
+                    className={`flex items-center justify-center min-w-9 min-h-9 rounded-md transition-colors ${
+                      layout === "grid" ? "bg-teal/10 text-teal" : "text-textSoft hover:text-text"
+                    }`}
+                  >
+                    <LayoutGrid size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout("kanban")}
+                    aria-label="Vue kanban"
+                    className={`flex items-center justify-center min-w-9 min-h-9 rounded-md transition-colors ${
+                      layout === "kanban" ? "bg-teal/10 text-teal" : "text-textSoft hover:text-text"
+                    }`}
+                  >
+                    <Kanban size={15} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {loading ? (
               <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
+            ) : layout === "kanban" ? (
+              <KanbanBoard
+                deals={kanbanDeals}
+                openStages={openStages}
+                profileById={profileById}
+                dupeClientIds={dupeClientIds}
+                dupeCoachIds={dupeCoachIds}
+                onOpen={openDeal}
+                onMoveDeal={handleMoveDealStage}
+              />
             ) : filteredDeals.length === 0 ? (
               <p className="text-sm text-textSoft py-10 text-center">Aucun client ne correspond aux filtres actuels.</p>
             ) : groupByInterest ? (
