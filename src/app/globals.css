@@ -79,6 +79,16 @@ button:active {
   }
 }
 
+/* UnitPicker (numero_unite_libre scroll wheel) - hides the native scrollbar
+   so the mask-image fade at the top/bottom edges reads as the picker's own
+   edge, not a scrollbar sitting on top of it. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /*
  * LOKI Intelligence province map (react-leaflet). The free/anonymous OSM
  * tile server has no dark variant, and stays in its natural light rendering

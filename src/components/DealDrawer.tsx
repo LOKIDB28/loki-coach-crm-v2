@@ -7,6 +7,7 @@ import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { CurrencyInput } from "./ui/CurrencyInput";
+import { UnitPicker } from "./ui/UnitPicker";
 import { Section } from "./Section";
 import { ActivityFeed } from "./ActivityFeed";
 import {
@@ -740,9 +741,10 @@ export function DealDrawer({
                   </p>
                 ) : (
                   <Field label="Numéro d'unité (temporaire, sans lien inventaire)">
-                    <TextInput
-                      value={section1.numero_unite_libre}
-                      onChange={(e) => setSection1((s) => ({ ...s, numero_unite_libre: e.target.value, dirty: true }))}
+                    <UnitPicker
+                      key={deal.id}
+                      value={section1.numero_unite_libre || null}
+                      onChange={(v) => setSection1((s) => ({ ...s, numero_unite_libre: v, dirty: true }))}
                     />
                   </Field>
                 )}
