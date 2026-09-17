@@ -119,15 +119,32 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
 
       <div className="flex items-center justify-between pt-2 border-t border-border/15">
         <span className="text-xs text-textSoft truncate min-w-0">{ownerName ?? "Non assigné"}</span>
-        {deal.niveau_interet && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-textSoft shrink-0">
-            <span
-              className="inline-block w-2 h-2 rounded-full"
-              style={{ backgroundColor: interetColor(deal.niveau_interet) }}
-            />
-            {deal.niveau_interet}
-          </span>
-        )}
+        {/* Same dot+label language as niveau_interet just below - stacked in
+            the same corner rather than a new row, so the card only grows
+            taller when both happen to be present at once. Filled teal dot
+            for "neuf", teal outline/transparent fill for "usager" - null
+            renders nothing, no default badge. */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {deal.type_vehicule_vise && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${
+                  deal.type_vehicule_vise === "neuf" ? "bg-teal" : "bg-transparent border border-teal"
+                }`}
+              />
+              {deal.type_vehicule_vise === "neuf" ? "NEUF" : "USAGÉ"}
+            </span>
+          )}
+          {deal.niveau_interet && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ backgroundColor: interetColor(deal.niveau_interet) }}
+              />
+              {deal.niveau_interet}
+            </span>
+          )}
+        </div>
       </div>
 
       {(hasClientDupe || hasCoachDupe) && (

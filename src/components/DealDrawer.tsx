@@ -956,6 +956,7 @@ export function DealDrawer({
               defaultOpen={localDeal.stage_id === negociationStage?.id}
             >
               <p className="text-sm text-textSoft">Ajoutez une note ci-dessous pour suivre la négociation.</p>
+              <NoteComposer onSubmit={onAddNote} />
             </Section>
 
             <Section
