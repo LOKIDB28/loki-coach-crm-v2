@@ -29,6 +29,14 @@ export const RELANCE_COLORS = {
   infoBlue: "#1A6FBF", // "Bientôt" (<=48h)
 } as const;
 
+// Outside the official brand palette, reserved exclusively for the
+// Pipedrive-import provenance badge ("P") on DealCard/DealDrawer - a third
+// explicit exception (after orange and RELANCE_COLORS above), not a general
+// purple/violet to reuse elsewhere. Applied inline (style={{backgroundColor}})
+// rather than a Tailwind arbitrary-value class since it's only used in two
+// places, both already reading from this file.
+export const IMPORT_BADGE_COLOR = "#7C3AED";
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =

@@ -3,6 +3,7 @@
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
 import { daysOverdue, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
+import { IMPORT_BADGE_COLOR } from "@/lib/theme";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
 interface DealCardProps {
@@ -32,10 +33,23 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
     <button
       type="button"
       onClick={onOpen}
-      className={`text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm ${
+      className={`relative text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm ${
         deal.archived ? "opacity-60" : ""
       }`}
     >
+      {/* Provenance badge, not a status/interaction indicator - anchored to
+          the card's actual corner (half-overlapping the border) rather than
+          competing with the name/montant/stage cluster inside the padding. */}
+      {deal.source_import === "pipedrive" && (
+        <span
+          className="absolute -top-2 -left-2 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold text-white shadow-sm z-10"
+          style={{ backgroundColor: IMPORT_BADGE_COLOR }}
+          title="Importé de Pipedrive"
+        >
+          P
+        </span>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-base font-medium leading-tight text-text truncate">{name}</div>

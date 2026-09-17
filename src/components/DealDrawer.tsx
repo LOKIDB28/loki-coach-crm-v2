@@ -20,6 +20,7 @@ import {
   stageIcon,
 } from "@/lib/domain";
 import { formatCurrency, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
+import { IMPORT_BADGE_COLOR } from "@/lib/theme";
 import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 interface DealDrawerProps {
@@ -46,11 +47,50 @@ interface DealDrawerProps {
 interface Section1State {
   source: string;
   niveau_interet: Deal["niveau_interet"];
+  type_vehicule_vise: Deal["type_vehicule_vise"];
+  numero_unite_libre: string;
+  // Trade-in ("véhicule en échange") fields - moved here from what was
+  // Section 4 (Proposition), so the new "Véhicule en échange ?" toggle can
+  // reveal them right where it lives (Section 1). Section 4 keeps only
+  // montant/valeur_echange/options now - these columns have exactly one
+  // section reading/writing them, never two, so there's no way for a
+  // half-saved edit in one place to disagree with the other.
+  echange_marque: string;
+  echange_modele: string;
+  echange_annee: string;
+  echange_km: string;
+  echange_accidente: Deal["echange_accidente"];
+  echange_numero_serie: string;
   dirty: boolean;
   saving: boolean;
 }
 function section1Defaults(deal: DealWithContact): Section1State {
-  return { source: deal.contact.source ?? "", niveau_interet: deal.niveau_interet, dirty: false, saving: false };
+  return {
+    source: deal.contact.source ?? "",
+    niveau_interet: deal.niveau_interet,
+    type_vehicule_vise: deal.type_vehicule_vise,
+    numero_unite_libre: deal.numero_unite_libre ?? "",
+    echange_marque: deal.echange_marque ?? "",
+    echange_modele: deal.echange_modele ?? "",
+    echange_annee: deal.echange_annee ?? "",
+    echange_km: deal.echange_km ?? "",
+    echange_accidente: deal.echange_accidente,
+    echange_numero_serie: deal.echange_numero_serie ?? "",
+    dirty: false,
+    saving: false,
+  };
+}
+
+/** True if any trade-in field already has data - drives the initial state of the "Véhicule en échange ?" toggle so existing data reopens expanded. */
+function hasEchangeData(deal: Deal): boolean {
+  return Boolean(
+    deal.echange_marque ||
+      deal.echange_modele ||
+      deal.echange_annee ||
+      deal.echange_km ||
+      deal.echange_numero_serie ||
+      deal.echange_accidente
+  );
 }
 
 interface Section2State {
@@ -86,12 +126,6 @@ interface Section4State {
   montant: number | null;
   valeur_echange: number | null;
   options: string;
-  echange_marque: string;
-  echange_modele: string;
-  echange_annee: string;
-  echange_km: string;
-  echange_accidente: Deal["echange_accidente"];
-  echange_numero_serie: string;
   dirty: boolean;
   saving: boolean;
 }
@@ -100,12 +134,6 @@ function section4Defaults(deal: DealWithContact): Section4State {
     montant: deal.montant,
     valeur_echange: deal.valeur_echange,
     options: deal.options ?? "",
-    echange_marque: deal.echange_marque ?? "",
-    echange_modele: deal.echange_modele ?? "",
-    echange_annee: deal.echange_annee ?? "",
-    echange_km: deal.echange_km ?? "",
-    echange_accidente: deal.echange_accidente,
-    echange_numero_serie: deal.echange_numero_serie ?? "",
     dirty: false,
     saving: false,
   };
@@ -171,6 +199,11 @@ export function DealDrawer({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [section1, setSection1] = useState(() => section1Defaults(deal));
+  // Not persisted - purely local UI visibility for the trade-in fields
+  // below the "Véhicule en échange ?" toggle. Starts expanded when the deal
+  // already has trade-in data (e.g. opening an older deal that was filled
+  // in before this toggle existed), collapsed otherwise.
+  const [showEchange, setShowEchange] = useState(() => hasEchangeData(deal));
   const [section2, setSection2] = useState(() => section2Defaults(deal));
   const [section3, setSection3] = useState(() => section3Defaults(deal));
   const [section4, setSection4] = useState(() => section4Defaults(deal));
@@ -194,6 +227,7 @@ export function DealDrawer({
     setSection4(section4Defaults(deal));
     setSection6(section6Defaults(deal));
     setSection7(section7Defaults(deal));
+    setShowEchange(hasEchangeData(deal));
     setPendingAction(null);
     setSaveError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,7 +268,17 @@ export function DealDrawer({
     try {
       await Promise.all([
         onUpdateContact({ source: section1.source || null }),
-        onUpdateDeal({ niveau_interet: section1.niveau_interet }),
+        onUpdateDeal({
+          niveau_interet: section1.niveau_interet,
+          type_vehicule_vise: section1.type_vehicule_vise,
+          numero_unite_libre: section1.numero_unite_libre || null,
+          echange_marque: section1.echange_marque || null,
+          echange_modele: section1.echange_modele || null,
+          echange_annee: section1.echange_annee || null,
+          echange_km: section1.echange_km || null,
+          echange_accidente: section1.echange_accidente,
+          echange_numero_serie: section1.echange_numero_serie || null,
+        }),
       ]);
       setSection1((s) => ({ ...s, saving: false, dirty: false }));
     } catch (err) {
@@ -280,12 +324,6 @@ export function DealDrawer({
         montant: section4.montant,
         valeur_echange: section4.valeur_echange,
         options: section4.options || null,
-        echange_marque: section4.echange_marque || null,
-        echange_modele: section4.echange_modele || null,
-        echange_annee: section4.echange_annee || null,
-        echange_km: section4.echange_km || null,
-        echange_accidente: section4.echange_accidente,
-        echange_numero_serie: section4.echange_numero_serie || null,
       });
       setSection4((s) => ({ ...s, saving: false, dirty: false }));
     } catch (err) {
@@ -379,8 +417,17 @@ export function DealDrawer({
       <div className="w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border/15 px-5 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-text truncate">
-              {fullName(localContact) || "(sans nom)"}
+            <h2 className="text-lg font-semibold text-text flex items-center gap-2 min-w-0">
+              <span className="truncate">{fullName(localContact) || "(sans nom)"}</span>
+              {deal.source_import === "pipedrive" && (
+                <span
+                  className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
+                  style={{ backgroundColor: IMPORT_BADGE_COLOR }}
+                  title="Importé de Pipedrive"
+                >
+                  P
+                </span>
+              )}
             </h2>
             <p className="text-xs text-textSoft">{saving ? "Enregistrement…" : "Enregistré"}</p>
           </div>
@@ -663,7 +710,113 @@ export function DealDrawer({
                     ))}
                   </Select>
                 </Field>
+                <Field label="Type de véhicule visé" className="col-span-2">
+                  <Select
+                    value={section1.type_vehicule_vise ?? ""}
+                    onChange={(e) =>
+                      setSection1((s) => ({
+                        ...s,
+                        type_vehicule_vise: (e.target.value || null) as Deal["type_vehicule_vise"],
+                        dirty: true,
+                      }))
+                    }
+                  >
+                    <option value="">—</option>
+                    <option value="neuf">Neuf</option>
+                    <option value="usager">Usager</option>
+                  </Select>
+                </Field>
               </div>
+
+              {/* Read-only from the live deal (real inventory link, edited
+                  in Section 2) when one exists; the free-text fallback only
+                  applies when there's nothing to link to yet. */}
+              <div className="pt-1">
+                <p className="text-xs font-medium text-textSoft mb-1.5">Numéro d&apos;unité</p>
+                {localDeal.coach_id ? (
+                  <p className="text-sm text-text">
+                    {coaches.find((c) => c.id === localDeal.coach_id)?.unit_number ?? "Unité liée"}
+                    <span className="text-textSoft text-xs"> (lié via la section Contact)</span>
+                  </p>
+                ) : (
+                  <Field label="Numéro d'unité (temporaire, sans lien inventaire)">
+                    <TextInput
+                      value={section1.numero_unite_libre}
+                      onChange={(e) => setSection1((s) => ({ ...s, numero_unite_libre: e.target.value, dirty: true }))}
+                    />
+                  </Field>
+                )}
+              </div>
+
+              {section1.type_vehicule_vise && (
+                <label className="flex items-center gap-2 text-xs font-medium text-textSoft pt-1">
+                  <input
+                    type="checkbox"
+                    checked={showEchange}
+                    onChange={(e) => setShowEchange(e.target.checked)}
+                    className="accent-teal w-4 h-4"
+                  />
+                  Véhicule en échange ?
+                </label>
+              )}
+
+              {section1.type_vehicule_vise && showEchange && (
+                <>
+                  <p className="text-xs font-medium text-textSoft pt-1">Véhicule usagé en échange</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <Field label="Marque">
+                      <TextInput
+                        value={section1.echange_marque}
+                        onChange={(e) => setSection1((s) => ({ ...s, echange_marque: e.target.value, dirty: true }))}
+                      />
+                    </Field>
+                    <Field label="Modèle">
+                      <TextInput
+                        value={section1.echange_modele}
+                        onChange={(e) => setSection1((s) => ({ ...s, echange_modele: e.target.value, dirty: true }))}
+                      />
+                    </Field>
+                    <Field label="Année">
+                      <TextInput
+                        value={section1.echange_annee}
+                        onChange={(e) => setSection1((s) => ({ ...s, echange_annee: e.target.value, dirty: true }))}
+                      />
+                    </Field>
+                    <Field label="Km">
+                      <TextInput
+                        value={section1.echange_km}
+                        onChange={(e) => setSection1((s) => ({ ...s, echange_km: e.target.value, dirty: true }))}
+                      />
+                    </Field>
+                    <Field label="Accidenté">
+                      <Select
+                        value={section1.echange_accidente ?? ""}
+                        onChange={(e) =>
+                          setSection1((s) => ({
+                            ...s,
+                            echange_accidente: (e.target.value || null) as Deal["echange_accidente"],
+                            dirty: true,
+                          }))
+                        }
+                      >
+                        <option value="">—</option>
+                        {ACCIDENT_OPTIONS.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <Field label="N° de série (échange)">
+                    <TextInput
+                      value={section1.echange_numero_serie}
+                      onChange={(e) => setSection1((s) => ({ ...s, echange_numero_serie: e.target.value, dirty: true }))}
+                    />
+                  </Field>
+                </>
+              )}
+
               <SaveSectionButton dirty={section1.dirty} saving={section1.saving} onClick={saveSection1} />
             </Section>
 
@@ -790,58 +943,6 @@ export function DealDrawer({
                   value={section4.options}
                   onChange={(e) => setSection4((s) => ({ ...s, options: e.target.value, dirty: true }))}
                   rows={2}
-                />
-              </Field>
-              <p className="text-xs font-medium text-textSoft pt-1">Véhicule usagé en échange</p>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <Field label="Marque">
-                  <TextInput
-                    value={section4.echange_marque}
-                    onChange={(e) => setSection4((s) => ({ ...s, echange_marque: e.target.value, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Modèle">
-                  <TextInput
-                    value={section4.echange_modele}
-                    onChange={(e) => setSection4((s) => ({ ...s, echange_modele: e.target.value, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Année">
-                  <TextInput
-                    value={section4.echange_annee}
-                    onChange={(e) => setSection4((s) => ({ ...s, echange_annee: e.target.value, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Km">
-                  <TextInput
-                    value={section4.echange_km}
-                    onChange={(e) => setSection4((s) => ({ ...s, echange_km: e.target.value, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Accidenté">
-                  <Select
-                    value={section4.echange_accidente ?? ""}
-                    onChange={(e) =>
-                      setSection4((s) => ({
-                        ...s,
-                        echange_accidente: (e.target.value || null) as Deal["echange_accidente"],
-                        dirty: true,
-                      }))
-                    }
-                  >
-                    <option value="">—</option>
-                    {ACCIDENT_OPTIONS.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <Field label="N° de série (échange)">
-                <TextInput
-                  value={section4.echange_numero_serie}
-                  onChange={(e) => setSection4((s) => ({ ...s, echange_numero_serie: e.target.value, dirty: true }))}
                 />
               </Field>
               <SaveSectionButton dirty={section4.dirty} saving={section4.saving} onClick={saveSection4} />

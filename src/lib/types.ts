@@ -75,6 +75,10 @@ export interface Contact {
   notes_intake: string | null;
   consent_marketing: boolean;
   archived: boolean;
+
+  // Added by 0012_add_source_import.sql - provenance marker (e.g.
+  // 'pipedrive'), not a marketing/acquisition channel.
+  source_import: string | null;
 }
 
 /** Fields accepted when creating a contact - id/created_at/updated_at are server-generated. */
@@ -128,6 +132,14 @@ export interface Deal {
   // from staging_import.rate, not maintained by the app. Independent of
   // stage_id/pipeline_stages.probability, not a replacement for either.
   rate_percent: number | null;
+
+  // Added by 0011_add_deal_qualification_fields.sql.
+  type_vehicule_vise: "neuf" | "usager" | null;
+  numero_unite_libre: string | null;
+
+  // Added by 0012_add_source_import.sql - provenance marker (e.g.
+  // 'pipedrive'), not a marketing/acquisition channel (see `source` above).
+  source_import: string | null;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {
