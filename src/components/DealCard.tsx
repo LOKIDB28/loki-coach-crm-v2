@@ -144,6 +144,16 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
               {deal.niveau_interet}
             </span>
           )}
+          {/* Main point of this indicator: let the team see at a glance
+              whether this lead has already been called, without opening the
+              dossier - avoids double outreach. Same dot+label language as
+              the two above. */}
+          {deal.premier_contact_le && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
+              <span className="inline-block w-2 h-2 rounded-full bg-teal" />
+              Contacté
+            </span>
+          )}
         </div>
       </div>
 

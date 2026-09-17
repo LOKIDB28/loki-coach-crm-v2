@@ -140,6 +140,12 @@ export interface Deal {
   // Added by 0012_add_source_import.sql - provenance marker (e.g.
   // 'pipedrive'), not a marketing/acquisition channel (see `source` above).
   source_import: string | null;
+
+  // Added by 0013_add_premier_contact.sql - set once via DealDrawer Section
+  // 2's toggle, never reset from the UI. The deals_log_first_contact
+  // trigger auto-logs an 'autre' activity (who/when) the moment this
+  // transitions from null to a real timestamp.
+  premier_contact_le: string | null;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {

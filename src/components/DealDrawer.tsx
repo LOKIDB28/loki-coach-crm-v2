@@ -20,7 +20,7 @@ import {
   SOURCE_SUGGESTIONS,
   stageIcon,
 } from "@/lib/domain";
-import { formatCurrency, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
+import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
 import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
@@ -49,13 +49,21 @@ interface Section1State {
   source: string;
   niveau_interet: Deal["niveau_interet"];
   type_vehicule_vise: Deal["type_vehicule_vise"];
+  // Unit qualification - a single edit point now. coach_id (moved here from
+  // what was Section 2) is the real inventory link, always editable;
+  // numero_unite_libre/coach_vise are the fallback pair shown only while
+  // coach_id is empty, replacing the old two-fields-two-sections split
+  // that let them disagree with each other.
+  coach_id: string | null;
+  coach_vise: string;
   numero_unite_libre: string;
-  // Trade-in ("véhicule en échange") fields - moved here from what was
-  // Section 4 (Proposition), so the new "Véhicule en échange ?" toggle can
-  // reveal them right where it lives (Section 1). Section 4 keeps only
-  // montant/valeur_echange/options now - these columns have exactly one
-  // section reading/writing them, never two, so there's no way for a
-  // half-saved edit in one place to disagree with the other.
+  // Trade-in ("véhicule en échange") - marque/modele/annee/km/accidente/
+  // numero_serie moved here from Section 4 previously; valeur_echange now
+  // joins them (also moved from Section 4) so the description and the
+  // dollar value of the same trade-in vehicle live in one place. Section 4
+  // keeps only montant/options - each of these columns has exactly one
+  // section reading/writing it, never two.
+  valeur_echange: number | null;
   echange_marque: string;
   echange_modele: string;
   echange_annee: string;
@@ -70,7 +78,10 @@ function section1Defaults(deal: DealWithContact): Section1State {
     source: deal.contact.source ?? "",
     niveau_interet: deal.niveau_interet,
     type_vehicule_vise: deal.type_vehicule_vise,
+    coach_id: deal.coach_id,
+    coach_vise: deal.coach_vise ?? "",
     numero_unite_libre: deal.numero_unite_libre ?? "",
+    valeur_echange: deal.valeur_echange,
     echange_marque: deal.echange_marque ?? "",
     echange_modele: deal.echange_modele ?? "",
     echange_annee: deal.echange_annee ?? "",
@@ -94,16 +105,6 @@ function hasEchangeData(deal: Deal): boolean {
   );
 }
 
-interface Section2State {
-  coach_vise: string;
-  coach_id: string | null;
-  dirty: boolean;
-  saving: boolean;
-}
-function section2Defaults(deal: DealWithContact): Section2State {
-  return { coach_vise: deal.coach_vise ?? "", coach_id: deal.coach_id, dirty: false, saving: false };
-}
-
 interface Section3State {
   next_action_at: string | null;
   evaluation_client: Deal["evaluation_client"];
@@ -125,7 +126,6 @@ function section3Defaults(deal: DealWithContact): Section3State {
 
 interface Section4State {
   montant: number | null;
-  valeur_echange: number | null;
   options: string;
   dirty: boolean;
   saving: boolean;
@@ -133,7 +133,6 @@ interface Section4State {
 function section4Defaults(deal: DealWithContact): Section4State {
   return {
     montant: deal.montant,
-    valeur_echange: deal.valeur_echange,
     options: deal.options ?? "",
     dirty: false,
     saving: false,
@@ -205,7 +204,7 @@ export function DealDrawer({
   // already has trade-in data (e.g. opening an older deal that was filled
   // in before this toggle existed), collapsed otherwise.
   const [showEchange, setShowEchange] = useState(() => hasEchangeData(deal));
-  const [section2, setSection2] = useState(() => section2Defaults(deal));
+  const [contactingBusy, setContactingBusy] = useState(false);
   const [section3, setSection3] = useState(() => section3Defaults(deal));
   const [section4, setSection4] = useState(() => section4Defaults(deal));
   const [section6, setSection6] = useState(() => section6Defaults(deal));
@@ -223,7 +222,6 @@ export function DealDrawer({
   // in-progress, not-yet-saved section edit.
   useEffect(() => {
     setSection1(section1Defaults(deal));
-    setSection2(section2Defaults(deal));
     setSection3(section3Defaults(deal));
     setSection4(section4Defaults(deal));
     setSection6(section6Defaults(deal));
@@ -235,7 +233,7 @@ export function DealDrawer({
   }, [deal.id]);
 
   const clientDupes = findClientMatchesForDeal(deal, allDeals, deal.id);
-  const coachDupes = findCoachMatchesForDeal({ coach_vise: section2.coach_vise }, allDeals, deal.id);
+  const coachDupes = findCoachMatchesForDeal({ coach_vise: section1.coach_vise }, allDeals, deal.id);
 
   async function commitContact(patch: Partial<Contact>) {
     setLocalContact((c) => ({ ...c, ...patch }));
@@ -272,7 +270,10 @@ export function DealDrawer({
         onUpdateDeal({
           niveau_interet: section1.niveau_interet,
           type_vehicule_vise: section1.type_vehicule_vise,
+          coach_id: section1.coach_id,
+          coach_vise: section1.coach_vise || null,
           numero_unite_libre: section1.numero_unite_libre || null,
+          valeur_echange: section1.valeur_echange,
           echange_marque: section1.echange_marque || null,
           echange_modele: section1.echange_modele || null,
           echange_annee: section1.echange_annee || null,
@@ -288,15 +289,20 @@ export function DealDrawer({
     }
   }
 
-  async function saveSection2() {
-    setSection2((s) => ({ ...s, saving: true }));
+  // Direct write, no draft/dirty state - a one-way, timestamped action
+  // (like archiving or marking gagné/perdu), not a field to correct later.
+  // The deals_log_first_contact trigger captures who/when server-side; the
+  // confirmation text below reads it back from the already-loaded
+  // `activities` array instead of a second round-trip.
+  async function handleMarkContacted() {
+    setContactingBusy(true);
     setSaveError(null);
     try {
-      await onUpdateDeal({ coach_vise: section2.coach_vise || null, coach_id: section2.coach_id });
-      setSection2((s) => ({ ...s, saving: false, dirty: false }));
+      await onUpdateDeal({ premier_contact_le: new Date().toISOString() });
     } catch (err) {
       setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
-      setSection2((s) => ({ ...s, saving: false }));
+    } finally {
+      setContactingBusy(false);
     }
   }
 
@@ -323,7 +329,6 @@ export function DealDrawer({
     try {
       await onUpdateDeal({
         montant: section4.montant,
-        valeur_echange: section4.valeur_echange,
         options: section4.options || null,
       });
       setSection4((s) => ({ ...s, saving: false, dirty: false }));
@@ -710,6 +715,7 @@ export function DealDrawer({
                       </option>
                     ))}
                   </Select>
+                  <p className="text-[11px] text-textSoft mt-1">Impression initiale, avant rencontre.</p>
                 </Field>
                 <Field label="Type de véhicule visé" className="col-span-2">
                   <Select
@@ -729,24 +735,44 @@ export function DealDrawer({
                 </Field>
               </div>
 
-              {/* Read-only from the live deal (real inventory link, edited
-                  in Section 2) when one exists; the free-text fallback only
-                  applies when there's nothing to link to yet. */}
+              {/* Single edit point for "which unit does this client want" -
+                  previously split between this Select (once in Section 2)
+                  and numero_unite_libre/coach_vise, with no cross-check
+                  between them. coach_id is always editable here; the
+                  roulette + free-text model fallback only show while it's
+                  still empty, since a real inventory link makes them moot. */}
               <div className="pt-1">
-                <p className="text-xs font-medium text-textSoft mb-1.5">Numéro d&apos;unité</p>
-                {localDeal.coach_id ? (
-                  <p className="text-sm text-text">
-                    {coaches.find((c) => c.id === localDeal.coach_id)?.unit_number ?? "Unité liée"}
-                    <span className="text-textSoft text-xs"> (lié via la section Contact)</span>
-                  </p>
-                ) : (
-                  <Field label="Numéro d'unité (temporaire, sans lien inventaire)">
-                    <UnitPicker
-                      key={deal.id}
-                      value={section1.numero_unite_libre || null}
-                      onChange={(v) => setSection1((s) => ({ ...s, numero_unite_libre: v, dirty: true }))}
-                    />
-                  </Field>
+                <Field label="Coach (inventaire)">
+                  <Select
+                    value={section1.coach_id ?? ""}
+                    onChange={(e) => setSection1((s) => ({ ...s, coach_id: e.target.value || null, dirty: true }))}
+                  >
+                    <option value="">Non lié</option>
+                    {coaches.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.unit_number} — {c.modele ?? "?"} ({c.statut})
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                {!section1.coach_id && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-textSoft mb-1.5">Numéro d&apos;unité (temporaire)</p>
+                      <UnitPicker
+                        key={deal.id}
+                        value={section1.numero_unite_libre || null}
+                        onChange={(v) => setSection1((s) => ({ ...s, numero_unite_libre: v, dirty: true }))}
+                      />
+                    </div>
+                    <Field label="Modèle visé (si numéro exact inconnu)">
+                      <TextInput
+                        value={section1.coach_vise}
+                        onChange={(e) => setSection1((s) => ({ ...s, coach_vise: e.target.value, dirty: true }))}
+                      />
+                    </Field>
+                  </div>
                 )}
               </div>
 
@@ -765,6 +791,12 @@ export function DealDrawer({
               {section1.type_vehicule_vise && showEchange && (
                 <>
                   <p className="text-xs font-medium text-textSoft pt-1">Véhicule usagé en échange</p>
+                  <Field label="Valeur d'échange">
+                    <CurrencyInput
+                      value={section1.valeur_echange}
+                      onChange={(v) => setSection1((s) => ({ ...s, valeur_echange: v, dirty: true }))}
+                    />
+                  </Field>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     <Field label="Marque">
                       <TextInput
@@ -829,28 +861,30 @@ export function DealDrawer({
               active={localDeal.stage_id === contactStage?.id}
               defaultOpen={localDeal.stage_id === contactStage?.id}
             >
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Coach visé" className="col-span-2">
-                  <TextInput
-                    value={section2.coach_vise}
-                    onChange={(e) => setSection2((s) => ({ ...s, coach_vise: e.target.value, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Coach (inventaire)" className="col-span-2">
-                  <Select
-                    value={section2.coach_id ?? ""}
-                    onChange={(e) => setSection2((s) => ({ ...s, coach_id: e.target.value || null, dirty: true }))}
-                  >
-                    <option value="">Non lié</option>
-                    {coaches.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.unit_number} — {c.modele ?? "?"} ({c.statut})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <SaveSectionButton dirty={section2.dirty} saving={section2.saving} onClick={saveSection2} />
+              {/* No form left here on purpose - coach_vise/coach_id moved to
+                  Section 1 (single edit point). This section only tracks
+                  whether the client has been reached at all, to prevent two
+                  reps calling the same lead - a one-way marker, not a
+                  correctable field, so once set it's a plain confirmation. */}
+              {localDeal.premier_contact_le ? (
+                <p className="text-sm text-text">
+                  Contacté par{" "}
+                  <span className="font-medium">
+                    {activities.find((a) => a.type === "autre" && a.contenu === "Premier contact effectué")?.author
+                      ?.nom ?? "quelqu'un"}
+                  </span>
+                  , le {formatDateTime(localDeal.premier_contact_le)}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={contactingBusy}
+                  onClick={handleMarkContacted}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
+                >
+                  {contactingBusy ? "Enregistrement…" : "Marquer comme contacté"}
+                </button>
+              )}
             </Section>
 
             <Section
@@ -888,6 +922,7 @@ export function DealDrawer({
                       </option>
                     ))}
                   </Select>
+                  <p className="text-[11px] text-textSoft mt-1">Évaluation après une rencontre réelle.</p>
                 </Field>
                 <Field label="Date visite d'usine">
                   <TextInput
@@ -926,20 +961,12 @@ export function DealDrawer({
               active={localDeal.stage_id === propositionStage?.id}
               defaultOpen={localDeal.stage_id === propositionStage?.id}
             >
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Prix de vente">
-                  <CurrencyInput
-                    value={section4.montant}
-                    onChange={(v) => setSection4((s) => ({ ...s, montant: v, dirty: true }))}
-                  />
-                </Field>
-                <Field label="Valeur d'échange">
-                  <CurrencyInput
-                    value={section4.valeur_echange}
-                    onChange={(v) => setSection4((s) => ({ ...s, valeur_echange: v, dirty: true }))}
-                  />
-                </Field>
-              </div>
+              <Field label="Prix de vente">
+                <CurrencyInput
+                  value={section4.montant}
+                  onChange={(v) => setSection4((s) => ({ ...s, montant: v, dirty: true }))}
+                />
+              </Field>
               <Field label="Options sélectionnées">
                 <TextArea
                   value={section4.options}
@@ -1019,8 +1046,6 @@ export function DealDrawer({
               </Field>
               <SaveSectionButton dirty={section7.dirty} saving={section7.saving} onClick={saveSection7} />
             </Section>
-
-            <NoteComposer onSubmit={onAddNote} />
           </div>
         </div>
       </div>
