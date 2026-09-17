@@ -269,3 +269,45 @@ magic-link redirect flow end to end.
   `SHOW_GROUP_BY_INTEREST = false`, à repasser à `true` pour le
   réactiver.
 
+## Conversions de devises appliquées
+
+L'import Pipedrive (`deals-32432855-2.csv`, 63 deals) contenait des montants
+en deux devises (`Deal - Currency of Value`: 48 CAD, 15 USD), alors que
+`deals.montant` n'a aucune colonne devise — tout y est écrit comme un seul
+nombre. Les 15 deals en USD ont été convertis en CAD avant l'écriture,
+plutôt que laissés tels quels.
+
+- **Taux utilisé** : 1 USD = 1.39 CAD
+- **Date de vérification du taux** : 16 septembre 2026
+- **Source** : taux du marché interbancaire (mid-market), vérifié via une
+  recherche web au moment de l'import — pas un taux historique à la date de
+  transaction de chaque deal individuel, qui n'est pas connue.
+- **Ce que ça veut dire pour un audit futur** : si quelqu'un doit un jour
+  corriger ces montants avec le vrai taux du jour de la transaction plutôt
+  que le taux d'import, les 15 deals ci-dessous sont ceux à retrouver et
+  recalculer (montant USD d'origine ÷ 1.39 pour retrouver la valeur source,
+  puis reconvertir au taux historique correct) :
+
+| Deal Pipedrive (ID) | Contact | Valeur USD d'origine |
+|---|---|---|
+| 1 | Dany Perron | 750 000 |
+| 3 | Denis Desharnais | 2 300 000 |
+| 5 | Joel Begin | 2 500 000 |
+| 6 | Luc Morin | 2 300 000 |
+| 7 | Michel Deschamps | 2 300 000 |
+| 8 | Tom Skudutis | 2 300 000 |
+| 9 | Monsieur Asselin | 2 000 000 |
+| 10 | Daniel Mercier | 0 *(→ montant NULL, pas converti)* |
+| 11 | François Jacob | 2 300 000 |
+| 31 | Bob Aloi Ultimate RV | 0 *(→ montant NULL, pas converti)* |
+| 60 | Juan Estrada | 1 500 000 |
+| 61 | Jim Tharp | 700 000 |
+| 62 | John Richardson | 1 700 000 |
+| 63 | M.63 | 2 000 000 |
+| 64 | Carl | 1 100 000 |
+
+Les IDs Pipedrive ci-dessus sont aussi préservés dans
+`staging_pipedrive.pipedrive_deal_id` et dans le commentaire de la
+migration qui écrit ces deals dans `deals` - la table de correspondance
+exacte reste disponible même après que cette section soit périmée.
+
