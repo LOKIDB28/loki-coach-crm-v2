@@ -630,7 +630,13 @@ export function DealDrawer({
               <NoteComposer
                 onSubmit={onAddNote}
                 label="Ajouter une note générale au dossier"
-                inputClassName="!bg-paper"
+                // Forcing a light background alone left the typed text and
+                // placeholder on TextArea's default theme-reactive colors
+                // (text-text/placeholder:text-textSoft), which resolve to
+                // near-white in dark mode - invisible on a background
+                // that's always light regardless of theme. Both need the
+                // same fixed-not-theme-reactive treatment as the background.
+                inputClassName="!bg-paper !text-onyx placeholder:!text-stone"
               />
             </div>
           </div>
