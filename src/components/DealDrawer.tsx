@@ -304,11 +304,23 @@ export function DealDrawer({
   // The deals_log_first_contact trigger captures who/when server-side; the
   // confirmation text below reads it back from the already-loaded
   // `activities` array instead of a second round-trip.
+  //
+  // Also advances stage_id Prospect -> Contact in the SAME update, but only
+  // when the deal is still at Prospect - a deal already further along
+  // (e.g. contacted after a meeting was already logged) keeps its stage
+  // untouched. One UPDATE, two independent AFTER UPDATE triggers
+  // (deals_log_stage + deals_log_first_contact) each fire off it, so both
+  // "Prospect → Contact" and "Premier contact effectué" land in activities
+  // from this single write - verified before writing this, not assumed.
   async function handleMarkContacted() {
     setContactingBusy(true);
     setSaveError(null);
     try {
-      await onUpdateDeal({ premier_contact_le: new Date().toISOString() });
+      const patch: Partial<Deal> = { premier_contact_le: new Date().toISOString() };
+      if (localDeal.stage_id === prospectStage?.id && contactStage) {
+        patch.stage_id = contactStage.id;
+      }
+      await onUpdateDeal(patch);
     } catch (err) {
       setSaveError(getErrorMessage(err, "Erreur lors de l'enregistrement."));
     } finally {
@@ -389,6 +401,13 @@ export function DealDrawer({
   const stageByCode = (code: string) => stages.find((s) => s.code === code);
   const prospectStage = stageByCode("prospect");
   const contactStage = stageByCode("contact");
+
+  // Once first contact is logged, going back to Prospect specifically is
+  // blocked - every other backward move (e.g. Rencontre -> Contact) stays
+  // untouched. Checked against the actual target stage's id, not a
+  // hardcoded index, so it still holds if stage positions ever change.
+  const targetPrevStage = openStages[openIndex - 1];
+  const prevBlockedByContact = targetPrevStage?.id === prospectStage?.id && Boolean(localDeal.premier_contact_le);
   const rencontreStage = stageByCode("rencontre");
   const propositionStage = stageByCode("proposition");
   const negociationStage = stageByCode("negociation");
@@ -564,10 +583,11 @@ export function DealDrawer({
           <div className="flex items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface px-3 py-2.5">
             <button
               type="button"
-              disabled={isClosedStage || openIndex <= 0}
+              disabled={isClosedStage || openIndex <= 0 || prevBlockedByContact}
               onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
               className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
               aria-label="Étape précédente"
+              title={prevBlockedByContact ? "Retour à Prospect impossible - premier contact déjà enregistré" : undefined}
             >
               <ChevronLeft size={20} />
             </button>
