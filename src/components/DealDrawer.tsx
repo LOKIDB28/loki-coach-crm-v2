@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Archive, ArchiveRestore, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, XCircle, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  History,
+  XCircle,
+  X,
+} from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
@@ -602,6 +612,29 @@ export function DealDrawer({
             </button>
           </div>
 
+          {/* "Historique & notes" - moved up here (was below the quick
+              contact fields, after the 7 sections) and given a solid teal
+              header band so it's unmissable the moment the drawer opens,
+              not one plain-text label among several. The general note
+              composer lives in the same block now, right next to the
+              history it adds to - Section 5 keeps its own, dedicated to
+              negotiation notes specifically, clearly relabeled so the two
+              are never confused. */}
+          <div className="rounded-xl overflow-hidden border border-teal/30">
+            <div className="bg-teal px-4 py-2.5 flex items-center gap-2">
+              <History size={15} className="text-white" />
+              <h3 className="text-sm font-semibold text-white">Historique &amp; notes</h3>
+            </div>
+            <div className="bg-surface px-4 py-3.5 space-y-3">
+              <ActivityFeed activities={activities} loading={activitiesLoading} />
+              <NoteComposer
+                onSubmit={onAddNote}
+                label="Ajouter une note générale au dossier"
+                inputClassName="!bg-paper"
+              />
+            </div>
+          </div>
+
           {/* Quick contact fields - autosave, unchanged */}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom">
@@ -667,12 +700,6 @@ export function DealDrawer({
                 ))}
               </Select>
             </Field>
-          </div>
-
-          {/* Chronological activity feed */}
-          <div>
-            <p className="text-xs font-medium text-textSoft mb-2">Historique &amp; notes</p>
-            <ActivityFeed activities={activities} loading={activitiesLoading} />
           </div>
 
           {/* Per-stage sections - draft + explicit "Enregistrer" per section */}
@@ -985,7 +1012,7 @@ export function DealDrawer({
               defaultOpen={localDeal.stage_id === negociationStage?.id}
             >
               <p className="text-sm text-textSoft">Ajoutez une note ci-dessous pour suivre la négociation.</p>
-              <NoteComposer onSubmit={onAddNote} />
+              <NoteComposer onSubmit={onAddNote} label="Ajouter une note de négociation" />
             </Section>
 
             <Section
@@ -1087,7 +1114,19 @@ function SaveSectionButton({ dirty, saving, onClick }: { dirty: boolean; saving:
   );
 }
 
-function NoteComposer({ onSubmit }: { onSubmit: (text: string) => Promise<void> }) {
+function NoteComposer({
+  onSubmit,
+  label = "Ajouter une note",
+  inputClassName = "",
+  labelClassName = "",
+}: {
+  onSubmit: (text: string) => Promise<void>;
+  /** Distinguishes which composer this is when more than one is visible at once (Section 5's negotiation notes vs the general one). */
+  label?: string;
+  /** Extra classes for the textarea itself - e.g. forcing a light background when this composer sits inside a solid-color band. */
+  inputClassName?: string;
+  labelClassName?: string;
+}) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -1104,14 +1143,16 @@ function NoteComposer({ onSubmit }: { onSubmit: (text: string) => Promise<void> 
 
   return (
     <div className="pt-1">
-      <Field label="Ajouter une note">
-        <TextArea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          placeholder="Nouvelle note…"
-        />
-      </Field>
+      <label className={`block text-[13px] font-medium mb-1 tracking-[0.01em] ${labelClassName || "text-textSoft"}`}>
+        {label}
+      </label>
+      <TextArea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder="Nouvelle note…"
+        className={inputClassName}
+      />
       <div className="flex justify-end mt-1.5">
         <button
           type="button"
