@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Archive,
@@ -15,6 +15,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Settings,
   Table2,
   X,
 } from "lucide-react";
@@ -54,9 +55,25 @@ type ViewMode = "pipeline" | "suivis";
 // threshold.
 const SHOW_GROUP_BY_INTEREST = false;
 
+// useSearchParams() (used below for the .ics feed's ?deal=<id> deep link)
+// requires a Suspense boundary above it during static generation, even
+// though this whole page is client-rendered - Next still needs one for
+// the build's prerender pass. DashboardPage stays the default export;
+// DashboardPageInner is everything the component used to be.
 export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={<div className="min-h-screen flex items-center justify-center text-sm text-textSoft">Chargement…</div>}
+    >
+      <DashboardPageInner />
+    </Suspense>
+  );
+}
+
+function DashboardPageInner() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,6 +147,20 @@ export default function DashboardPage() {
     setSelectedDealId(id);
     loadActivities(id);
   }
+
+  // Deep link from the .ics calendar feed's event description (?deal=<id>)
+  // - only fires once deals have actually loaded (so it doesn't miss a
+  // valid id just because the fetch hasn't resolved yet), and strips the
+  // param afterward so it doesn't reopen on every re-render.
+  useEffect(() => {
+    const dealParam = searchParams.get("deal");
+    if (!dealParam || deals.length === 0) return;
+    if (deals.some((d) => d.id === dealParam)) {
+      openDeal(dealParam);
+    }
+    router.replace("/", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deals, searchParams]);
 
   async function handleCreateDeal(contactInput: NewContact, dealInput: Partial<Deal>, initialNote: string) {
     const firstStage = stages.find((s) => s.code === "prospect") ?? stages[0];
@@ -391,6 +422,12 @@ export default function DashboardPage() {
             >
               <BarChart3 size={14} /> LOKI Intelligence
             </Link>
+            <Link
+              href="/settings"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+            >
+              <Settings size={14} /> Paramètres
+            </Link>
             <button
               type="button"
               onClick={handleExport}
@@ -427,6 +464,13 @@ export default function DashboardPage() {
                       className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-teal hover:bg-surface2"
                     >
                       <BarChart3 size={16} /> LOKI Intelligence
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                    >
+                      <Settings size={16} /> Paramètres
                     </Link>
                     <div className="my-1 border-t border-border/15" />
                     <button

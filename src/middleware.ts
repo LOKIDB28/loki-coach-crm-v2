@@ -45,7 +45,11 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico";
+    pathname === "/favicon.ico" ||
+    // The .ics calendar feed has no session to check - Outlook can't log
+    // in. The token in the URL is the sole credential (see
+    // get_calendar_feed() in migration 0014), not a Supabase session.
+    pathname.startsWith("/api/calendar");
 
   if (!isAuthed && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
