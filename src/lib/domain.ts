@@ -89,22 +89,37 @@ export function fullName(c: { prenom?: string | null; nom?: string | null }): st
 }
 
 /**
+ * Digits-only, with the leading Canada/US country code dropped when present
+ * ("+1 418-805-0504", "1-418-805-0504" and "418-805-0504" all normalize to
+ * "4188050504") - our real data mixes both, unformatted phone strings were
+ * failing exact-match on separator differences alone. Only strips a leading
+ * "1" when the digit count is 11 (i.e. actually a country code), so a bare
+ * 11-digit local number without one isn't mistakenly truncated.
+ */
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+}
+
+/**
  * Ported as-is from the prototype: exact (case-insensitive, trimmed) match
  * on phone, email, or full name identifies the same person entered more
- * than once.
+ * than once. Phone is additionally normalized (see normalizePhone) so
+ * formatting differences alone don't hide a real duplicate; name/email stay
+ * plain trimmed/lowercased exact matches.
  */
 export function findClientMatches<T extends DupeCandidate>(
   candidate: DupeCandidate,
   pool: T[],
   excludeId?: string
 ): T[] {
-  const phone = (candidate.telephone || "").trim().toLowerCase();
+  const phone = normalizePhone((candidate.telephone || "").trim());
   const email = (candidate.email || "").trim().toLowerCase();
   const name = fullName(candidate).toLowerCase();
   if (!phone && !email && !name) return [];
   return pool.filter((c) => {
     if (excludeId && c.id === excludeId) return false;
-    const cPhone = (c.telephone || "").trim().toLowerCase();
+    const cPhone = normalizePhone((c.telephone || "").trim());
     const cEmail = (c.email || "").trim().toLowerCase();
     const cName = fullName(c).toLowerCase();
     return (
