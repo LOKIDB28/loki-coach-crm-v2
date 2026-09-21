@@ -6,8 +6,12 @@ interface RepresentativeTabsProps {
   profiles: Profile[];
   counts: Record<string, number>;
   totalCount: number;
-  activeOwnerId: string | null;
-  onSelect: (ownerId: string | null) => void;
+  /** Empty array = "Tous" selected (no filter). */
+  activeOwnerIds: string[];
+  /** Toggles a single rep in/out of the selection. */
+  onToggle: (ownerId: string) => void;
+  /** Resets to "Tous" - always clears the whole selection, never just adds itself as one more choice. */
+  onSelectAll: () => void;
 }
 
 const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
@@ -30,13 +34,14 @@ const REP_TAB_ORDER = ["Frederick Sabourin", "Jeff Gagne", "Pierre-Mathieu", "Ma
   normalizeRepName
 );
 
-/** "Tous" + one tab per team member, driven by the live profiles list instead of a hardcoded array. */
+/** "Tous" + one tab per team member, driven by the live profiles list instead of a hardcoded array. Multi-select: several rep tabs can be active at once (e.g. comparing two reps' portfolios for duplicates), "Tous" always resets the whole selection rather than joining it as one more choice. */
 export function RepresentativeTabs({
   profiles,
   counts,
   totalCount,
-  activeOwnerId,
-  onSelect,
+  activeOwnerIds,
+  onToggle,
+  onSelectAll,
 }: RepresentativeTabsProps) {
   const orderedProfiles = [...profiles].sort((a, b) => {
     const ia = REP_TAB_ORDER.indexOf(normalizeRepName(a.nom));
@@ -49,16 +54,16 @@ export function RepresentativeTabs({
       <TabButton
         label="Tous"
         count={totalCount}
-        active={activeOwnerId === null}
-        onClick={() => onSelect(null)}
+        active={activeOwnerIds.length === 0}
+        onClick={onSelectAll}
       />
       {orderedProfiles.map((p) => (
         <TabButton
           key={p.id}
           label={p.nom || p.email || "Sans nom"}
           count={counts[p.id] ?? 0}
-          active={activeOwnerId === p.id}
-          onClick={() => onSelect(p.id)}
+          active={activeOwnerIds.includes(p.id)}
+          onClick={() => onToggle(p.id)}
         />
       ))}
     </div>

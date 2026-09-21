@@ -85,7 +85,10 @@ function DashboardPageInner() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
 
   const [activeStage, setActiveStage] = useState<number | null>(null);
-  const [activeOwnerId, setActiveOwnerId] = useState<string | null>(null);
+  // Multi-select: empty array = "Tous" (no filter, matches the old `null`
+  // meaning). Toggled via toggleOwnerId below, never a bare setter, so
+  // clicking a rep always adds/removes just that one id.
+  const [activeOwnerIds, setActiveOwnerIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [groupByInterest, setGroupByInterest] = useState(false);
   const [dupesOnly, setDupesOnly] = useState(false);
@@ -284,6 +287,10 @@ function DashboardPageInner() {
     router.refresh();
   }
 
+  function toggleOwnerId(ownerId: string) {
+    setActiveOwnerIds((prev) => (prev.includes(ownerId) ? prev.filter((id) => id !== ownerId) : [...prev, ownerId]));
+  }
+
   // Two mutually exclusive views, never mixed: by default every derived
   // list below (counts, recap, dupe checks, suivis, the grid itself) only
   // ever sees non-archived deals; toggling "Afficher les dossiers
@@ -308,6 +315,16 @@ function DashboardPageInner() {
     return counts;
   }, [visibleDeals]);
 
+  // NOTE (known limitation, kept as-is on purpose): duplicate detection runs
+  // against ALL visibleDeals regardless of which reps are selected below -
+  // it is NOT scoped to only cross-match between the currently selected
+  // owners. So with Fred+PM selected, "Doublons seulement" shows any of
+  // their deals that have a duplicate anywhere in the system (even one
+  // owned by Marie-Pierre or Louis-Philippe), not strictly duplicates
+  // between Fred and PM specifically. This matched the old single-select
+  // behavior and was deliberately left unchanged when owner filtering went
+  // multi-select - a true cross-selected-reps-only detection would be a
+  // separate change, not an adjustment of this one.
   const dupeClientIds = useMemo(() => {
     const ids = new Set<string>();
     for (const d of visibleDeals) {
@@ -328,7 +345,7 @@ function DashboardPageInner() {
     const q = search.trim().toLowerCase();
     return visibleDeals.filter((d) => {
       if (activeStage !== null && d.stage_id !== activeStage) return false;
-      if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
+      if (activeOwnerIds.length > 0 && (!d.owner_id || !activeOwnerIds.includes(d.owner_id))) return false;
       // Purely a display filter on top of the existing detection - reuses
       // dupeClientIds/dupeCoachIds as-is, never recomputes or touches the
       // matching logic itself.
@@ -341,7 +358,7 @@ function DashboardPageInner() {
       }
       return true;
     });
-  }, [visibleDeals, activeStage, activeOwnerId, search, dupesOnly, dupeClientIds, dupeCoachIds]);
+  }, [visibleDeals, activeStage, activeOwnerIds, search, dupesOnly, dupeClientIds, dupeCoachIds]);
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
@@ -360,7 +377,7 @@ function DashboardPageInner() {
   const kanbanDeals = useMemo(() => {
     const q = search.trim().toLowerCase();
     return visibleDeals.filter((d) => {
-      if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
+      if (activeOwnerIds.length > 0 && (!d.owner_id || !activeOwnerIds.includes(d.owner_id))) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
@@ -369,7 +386,7 @@ function DashboardPageInner() {
       }
       return true;
     });
-  }, [visibleDeals, activeOwnerId, search]);
+  }, [visibleDeals, activeOwnerIds, search]);
 
   return (
     <div className="min-h-screen">
@@ -593,8 +610,9 @@ function DashboardPageInner() {
           profiles={profiles}
           counts={ownerCounts}
           totalCount={visibleDeals.length}
-          activeOwnerId={activeOwnerId}
-          onSelect={setActiveOwnerId}
+          activeOwnerIds={activeOwnerIds}
+          onToggle={toggleOwnerId}
+          onSelectAll={() => setActiveOwnerIds([])}
         />
 
         {/* Desktop-only - these two toggles live in the "…" menu on mobile */}
@@ -634,17 +652,18 @@ function DashboardPageInner() {
                   would misleadingly imply it's still filtering something).
                   Owner/search chips stay visible in both, since kanban
                   columns are filtered by both same as the grid. */}
-              {((layout === "grid" && activeStage !== null) || activeOwnerId !== null || search) && (
+              {((layout === "grid" && activeStage !== null) || activeOwnerIds.length > 0 || search) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {layout === "grid" && activeStage !== null && (
                     <Chip label={`Étape: ${stageById.get(activeStage)?.label}`} onClear={() => setActiveStage(null)} />
                   )}
-                  {activeOwnerId !== null && (
+                  {activeOwnerIds.map((ownerId) => (
                     <Chip
-                      label={`Rep.: ${profileById.get(activeOwnerId)?.nom ?? profileById.get(activeOwnerId)?.email}`}
-                      onClear={() => setActiveOwnerId(null)}
+                      key={ownerId}
+                      label={`Rep.: ${profileById.get(ownerId)?.nom ?? profileById.get(ownerId)?.email}`}
+                      onClear={() => toggleOwnerId(ownerId)}
                     />
-                  )}
+                  ))}
                   {search && <Chip label={`Recherche: ${search}`} onClear={() => setSearch("")} />}
                 </div>
               )}
