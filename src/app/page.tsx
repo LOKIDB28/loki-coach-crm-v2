@@ -397,6 +397,16 @@ function DashboardPageInner() {
             <img src="/loki-coach-logo.svg" alt="LOKI Coach" className="hidden sm:block h-6 sm:h-7 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setNewDealOpen(true)}
+              aria-label="Nouveau client"
+              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nouveau client</span>
+            </button>
+
             {/* Desktop-only secondary actions - folded into the "…" menu on mobile */}
             <button
               type="button"
@@ -405,6 +415,15 @@ function DashboardPageInner() {
             >
               <RefreshCw size={14} /> Rafraîchir
             </button>
+            <label className="hidden sm:flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
+              <input
+                type="checkbox"
+                checked={dupesOnly}
+                onChange={(e) => setDupesOnly(e.target.checked)}
+                className="accent-teal w-4 h-4"
+              />
+              Doublons seulement
+            </label>
             <button
               type="button"
               onClick={handleExportCsv}
@@ -414,12 +433,10 @@ function DashboardPageInner() {
             </button>
             <button
               type="button"
-              onClick={() => setNewDealOpen(true)}
-              aria-label="Nouveau client"
-              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
+              onClick={handleExport}
+              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
             >
-              <Plus size={16} />
-              <span className="hidden sm:inline">Nouveau client</span>
+              Sauvegarde complète (JSON)
             </button>
             <Link
               href="/intelligence"
@@ -433,17 +450,11 @@ function DashboardPageInner() {
             >
               <Settings size={14} /> Paramètres
             </Link>
-            <button
-              type="button"
-              onClick={handleExport}
-              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
-            >
-              Sauvegarde complète (JSON)
-            </button>
 
-            {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde JSON,
-                récap et archives toggles - everything that's a separate row
-                or extra header button on desktop, collapsed to one trigger. */}
+            {/* Mobile-only compact menu: Rafraîchir, Doublons seulement,
+                Exporter, Sauvegarde JSON, récap et archives toggles -
+                everything that's a separate row or extra header button on
+                desktop, collapsed to one trigger. */}
             <div className="relative sm:hidden">
               <button
                 type="button"
@@ -488,6 +499,15 @@ function DashboardPageInner() {
                     >
                       <RefreshCw size={16} /> Rafraîchir
                     </button>
+                    <label className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2">
+                      <input
+                        type="checkbox"
+                        checked={dupesOnly}
+                        onChange={(e) => setDupesOnly(e.target.checked)}
+                        className="accent-teal w-4 h-4"
+                      />
+                      Doublons seulement
+                    </label>
                     <button
                       type="button"
                       onClick={() => {
@@ -644,16 +664,6 @@ function DashboardPageInner() {
                   {search && <Chip label={`Recherche: ${search}`} onClear={() => setSearch("")} />}
                 </div>
               )}
-
-              <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
-                <input
-                  type="checkbox"
-                  checked={dupesOnly}
-                  onChange={(e) => setDupesOnly(e.target.checked)}
-                  className="accent-teal w-4 h-4"
-                />
-                Doublons seulement
-              </label>
 
               {SHOW_GROUP_BY_INTEREST && (
                 <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
