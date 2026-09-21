@@ -88,6 +88,7 @@ function DashboardPageInner() {
   const [activeOwnerId, setActiveOwnerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [groupByInterest, setGroupByInterest] = useState(false);
+  const [dupesOnly, setDupesOnly] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
@@ -328,6 +329,10 @@ function DashboardPageInner() {
     return visibleDeals.filter((d) => {
       if (activeStage !== null && d.stage_id !== activeStage) return false;
       if (activeOwnerId !== null && d.owner_id !== activeOwnerId) return false;
+      // Purely a display filter on top of the existing detection - reuses
+      // dupeClientIds/dupeCoachIds as-is, never recomputes or touches the
+      // matching logic itself.
+      if (dupesOnly && !dupeClientIds.has(d.id) && !dupeCoachIds.has(d.id)) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
@@ -336,7 +341,7 @@ function DashboardPageInner() {
       }
       return true;
     });
-  }, [visibleDeals, activeStage, activeOwnerId, search]);
+  }, [visibleDeals, activeStage, activeOwnerId, search, dupesOnly, dupeClientIds, dupeCoachIds]);
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
@@ -639,6 +644,16 @@ function DashboardPageInner() {
                   {search && <Chip label={`Recherche: ${search}`} onClear={() => setSearch("")} />}
                 </div>
               )}
+
+              <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
+                <input
+                  type="checkbox"
+                  checked={dupesOnly}
+                  onChange={(e) => setDupesOnly(e.target.checked)}
+                  className="accent-teal w-4 h-4"
+                />
+                Doublons seulement
+              </label>
 
               {SHOW_GROUP_BY_INTEREST && (
                 <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
