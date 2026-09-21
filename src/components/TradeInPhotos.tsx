@@ -23,9 +23,12 @@ interface TradeInPhotosProps {
  * Photo gallery for the trade-in vehicle ("Véhicule en échange", Section 1).
  * Private Supabase Storage bucket behind signed URLs (see lib/data.ts and
  * supabase/migrations/0015_create_deal_photos.sql) - never a public link.
- * capture="environment" biases mobile browsers toward the rear camera for
- * the main use case (a rep photographing the vehicle on-site); `multiple`
- * still allows picking existing files from the gallery too.
+ * No `capture` attribute on the file input, deliberately: it forces the
+ * camera open directly, skipping the native "Take Photo" / "Choose from
+ * Library" / "Choose File" picker mobile browsers otherwise show for a
+ * plain `accept="image/*"` input - a rep photographing the vehicle on-site
+ * and one importing already-taken photos later both need to work, not just
+ * the first. `multiple` allows picking several files at once either way.
  */
 export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, onDelete }: TradeInPhotosProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +104,6 @@ export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, o
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         multiple
         onChange={(e) => handleFilesSelected(e.target.files)}
         className="hidden"
