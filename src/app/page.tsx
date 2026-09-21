@@ -415,15 +415,6 @@ function DashboardPageInner() {
             >
               <RefreshCw size={14} /> Rafraîchir
             </button>
-            <label className="hidden sm:flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
-              <input
-                type="checkbox"
-                checked={dupesOnly}
-                onChange={(e) => setDupesOnly(e.target.checked)}
-                className="accent-teal w-4 h-4"
-              />
-              Doublons seulement
-            </label>
             <button
               type="button"
               onClick={handleExportCsv}
@@ -434,27 +425,29 @@ function DashboardPageInner() {
             <button
               type="button"
               onClick={handleExport}
-              className="hidden sm:inline-flex items-center rounded-full border border-orange/40 bg-gradient-to-b from-orange/15 to-orange/5 px-2.5 py-1 text-xs text-orange hover:from-orange/25 hover:to-orange/10 transition-all duration-150"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               Sauvegarde complète (JSON)
             </button>
-            <Link
-              href="/intelligence"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
-            >
-              <BarChart3 size={14} /> LOKI Intelligence
-            </Link>
             <Link
               href="/settings"
               className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
             >
               <Settings size={14} /> Paramètres
             </Link>
+            {/* Deliberately distinct from the other secondary actions - the
+                one destination button we want to pop instead of blend in. */}
+            <Link
+              href="/intelligence"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-[#EDFF00] text-onyx hover:opacity-90 transition-opacity duration-150"
+            >
+              <BarChart3 size={14} /> LOKI Intelligence
+            </Link>
 
-            {/* Mobile-only compact menu: Rafraîchir, Doublons seulement,
-                Exporter, Sauvegarde JSON, récap et archives toggles -
-                everything that's a separate row or extra header button on
-                desktop, collapsed to one trigger. */}
+            {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde
+                JSON, Paramètres, LOKI Intelligence, récap et archives
+                toggles - everything that's a separate row or extra header
+                button on desktop, collapsed to one trigger. */}
             <div className="relative sm:hidden">
               <button
                 type="button"
@@ -474,21 +467,6 @@ function DashboardPageInner() {
                       header row, instead of a fixed width that can overflow
                       past the left edge. */}
                   <div className="fixed left-4 right-4 top-20 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
-                    <Link
-                      href="/intelligence"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-teal hover:bg-surface2"
-                    >
-                      <BarChart3 size={16} /> LOKI Intelligence
-                    </Link>
-                    <Link
-                      href="/settings"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      <Settings size={16} /> Paramètres
-                    </Link>
-                    <div className="my-1 border-t border-border/15" />
                     <button
                       type="button"
                       onClick={() => {
@@ -499,15 +477,6 @@ function DashboardPageInner() {
                     >
                       <RefreshCw size={16} /> Rafraîchir
                     </button>
-                    <label className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2">
-                      <input
-                        type="checkbox"
-                        checked={dupesOnly}
-                        onChange={(e) => setDupesOnly(e.target.checked)}
-                        className="accent-teal w-4 h-4"
-                      />
-                      Doublons seulement
-                    </label>
                     <button
                       type="button"
                       onClick={() => {
@@ -524,10 +493,25 @@ function DashboardPageInner() {
                         handleExport();
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
                     >
                       Sauvegarde complète (JSON)
                     </button>
+                    <Link
+                      href="/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                    >
+                      <Settings size={16} /> Paramètres
+                    </Link>
+                    {/* Deliberately distinct from the other rows - same pop as its desktop counterpart. */}
+                    <Link
+                      href="/intelligence"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-onyx bg-[#EDFF00] hover:opacity-90"
+                    >
+                      <BarChart3 size={16} /> LOKI Intelligence
+                    </Link>
                     <div className="my-1 border-t border-border/15" />
                     <button
                       type="button"
@@ -664,6 +648,16 @@ function DashboardPageInner() {
                   {search && <Chip label={`Recherche: ${search}`} onClear={() => setSearch("")} />}
                 </div>
               )}
+
+              <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
+                <input
+                  type="checkbox"
+                  checked={dupesOnly}
+                  onChange={(e) => setDupesOnly(e.target.checked)}
+                  className="accent-teal w-4 h-4"
+                />
+                Doublons seulement
+              </label>
 
               {SHOW_GROUP_BY_INTEREST && (
                 <label className="flex items-center gap-2 text-xs font-medium text-textSoft min-h-11 py-2">
