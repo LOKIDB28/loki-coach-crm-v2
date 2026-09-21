@@ -20,6 +20,7 @@ import { CurrencyInput } from "./ui/CurrencyInput";
 import { UnitPicker } from "./ui/UnitPicker";
 import { Section } from "./Section";
 import { ActivityFeed } from "./ActivityFeed";
+import { TradeInPhotos } from "./TradeInPhotos";
 import {
   ACCIDENT_OPTIONS,
   EVALUATIONS,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
-import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, PipelineStage, Profile } from "@/lib/types";
+import type { ActivityWithAuthor, Coach, Contact, Deal, DealPhoto, DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 interface DealDrawerProps {
   deal: DealWithContact;
@@ -42,11 +43,17 @@ interface DealDrawerProps {
   allDeals: DealWithContact[];
   activities: ActivityWithAuthor[];
   activitiesLoading: boolean;
+  photos: DealPhoto[];
+  photoUrls: Record<string, string>;
+  photoUploading: boolean;
+  photoError: string | null;
   onClose: () => void;
   onUpdateContact: (patch: Partial<Contact>) => Promise<void>;
   onUpdateDeal: (patch: Partial<Deal>) => Promise<void>;
   onChangeStage: (newStageId: number) => Promise<void>;
   onAddNote: (contenu: string) => Promise<void>;
+  onUploadPhotos: (files: File[]) => void;
+  onDeletePhoto: (photo: DealPhoto) => void;
 }
 
 // Local draft state for each pipeline-stage section - fields here are NOT
@@ -187,11 +194,17 @@ export function DealDrawer({
   allDeals,
   activities,
   activitiesLoading,
+  photos,
+  photoUrls,
+  photoUploading,
+  photoError,
   onClose,
   onUpdateContact,
   onUpdateDeal,
   onChangeStage,
   onAddNote,
+  onUploadPhotos,
+  onDeletePhoto,
 }: DealDrawerProps) {
   const [localContact, setLocalContact] = useState(deal.contact);
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
@@ -901,6 +914,14 @@ export function DealDrawer({
                       onChange={(e) => setSection1((s) => ({ ...s, echange_numero_serie: e.target.value, dirty: true }))}
                     />
                   </Field>
+                  <TradeInPhotos
+                    photos={photos}
+                    photoUrls={photoUrls}
+                    uploading={photoUploading}
+                    error={photoError}
+                    onUpload={onUploadPhotos}
+                    onDelete={onDeletePhoto}
+                  />
                 </>
               )}
 

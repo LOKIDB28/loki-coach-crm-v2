@@ -24,14 +24,18 @@ import {
   addActivity,
   changeDealStage,
   createContactAndDeal,
+  deleteDealPhoto,
   fetchActivitiesForDeal,
   fetchCoaches,
+  fetchDealPhotos,
   fetchDeals,
   fetchExportPayload,
   fetchPipelineStages,
   fetchProfiles,
+  getSignedPhotoUrls,
   updateContactRow,
   updateDealRow,
+  uploadDealPhoto,
 } from "@/lib/data";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
@@ -44,7 +48,17 @@ import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
 import { RecapTable } from "@/components/RecapTable";
 import { RepresentativeTabs } from "@/components/RepresentativeTabs";
-import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, NewContact, PipelineStage, Profile } from "@/lib/types";
+import type {
+  ActivityWithAuthor,
+  Coach,
+  Contact,
+  Deal,
+  DealPhoto,
+  DealWithContact,
+  NewContact,
+  PipelineStage,
+  Profile,
+} from "@/lib/types";
 
 type ViewMode = "pipeline" | "calendrier";
 
@@ -103,6 +117,10 @@ function DashboardPageInner() {
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityWithAuthor[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [photos, setPhotos] = useState<DealPhoto[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -147,9 +165,61 @@ function DashboardPageInner() {
     [supabase]
   );
 
+  const loadPhotos = useCallback(
+    async (dealId: string) => {
+      setPhotoError(null);
+      try {
+        const rows = await fetchDealPhotos(supabase, dealId);
+        setPhotos(rows);
+        const urls = await getSignedPhotoUrls(
+          supabase,
+          rows.map((p) => p.storage_path)
+        );
+        setPhotoUrls(urls);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [supabase]
+  );
+
+  async function handleUploadPhotos(files: File[]) {
+    if (!selectedDeal) return;
+    setPhotoUploading(true);
+    setPhotoError(null);
+    try {
+      for (const file of files) {
+        const photo = await uploadDealPhoto(supabase, selectedDeal.id, file, userId);
+        setPhotos((prev) => [...prev, photo]);
+        const urls = await getSignedPhotoUrls(supabase, [photo.storage_path]);
+        setPhotoUrls((prev) => ({ ...prev, ...urls }));
+      }
+    } catch (err) {
+      setPhotoError(getErrorMessage(err, "Erreur lors de l'envoi de la photo."));
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function handleDeletePhoto(photo: DealPhoto) {
+    setPhotoError(null);
+    try {
+      await deleteDealPhoto(supabase, photo);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      setPhotoUrls((prev) => {
+        const next = { ...prev };
+        delete next[photo.storage_path];
+        return next;
+      });
+    } catch (err) {
+      setPhotoError(getErrorMessage(err, "Erreur lors de la suppression de la photo."));
+    }
+  }
+
   function openDeal(id: string) {
     setSelectedDealId(id);
     loadActivities(id);
+    loadPhotos(id);
   }
 
   // Deep link from the .ics calendar feed's event description (?deal=<id>)
@@ -865,11 +935,17 @@ function DashboardPageInner() {
           allDeals={visibleDeals}
           activities={activities}
           activitiesLoading={activitiesLoading}
+          photos={photos}
+          photoUrls={photoUrls}
+          photoUploading={photoUploading}
+          photoError={photoError}
           onClose={() => setSelectedDealId(null)}
           onUpdateContact={handleUpdateSelectedContact}
           onUpdateDeal={handleUpdateSelectedDeal}
           onChangeStage={handleChangeStage}
           onAddNote={handleAddNote}
+          onUploadPhotos={handleUploadPhotos}
+          onDeletePhoto={handleDeletePhoto}
         />
       )}
     </div>

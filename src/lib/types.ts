@@ -172,6 +172,21 @@ export interface ActivityWithAuthor extends Activity {
   author: Profile | null;
 }
 
+/**
+ * A trade-in vehicle photo ("Véhicule en échange", Deal Drawer Section 1) -
+ * see supabase/migrations/0015_create_deal_photos.sql. storage_path is the
+ * private Storage object key, never a usable URL by itself - the app
+ * exchanges it for a short-lived signed URL on demand (getSignedPhotoUrls
+ * in lib/data.ts), never persists that URL anywhere.
+ */
+export interface DealPhoto {
+  id: string;
+  deal_id: string;
+  storage_path: string;
+  created_by: string | null;
+  created_at: string;
+}
+
 // Read-only rows from loki-crm-prod's reporting views (public.v_sources,
 // public.v_forecast_par_rep) - not covered by RLS policies/grants specific
 // to this app, they inherit the same "interne" SELECT access as the base

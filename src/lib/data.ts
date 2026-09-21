@@ -5,6 +5,7 @@ import type {
   Coach,
   Contact,
   Deal,
+  DealPhoto,
   DealWithContact,
   ForecastByRepRow,
   NewContact,
@@ -222,4 +223,82 @@ export async function fetchForecastByRep(supabase: SupabaseClient): Promise<Fore
   const { data, error } = await supabase.from("v_forecast_par_rep").select("*");
   if (error) throw error;
   return (data ?? []) as ForecastByRepRow[];
+}
+
+// --- Trade-in vehicle photos ("Véhicule en échange") ---------------------
+// See supabase/migrations/0015_create_deal_photos.sql for the private
+// bucket + RLS this all depends on.
+
+const TRADE_IN_PHOTOS_BUCKET = "trade-in-photos";
+
+export async function fetchDealPhotos(supabase: SupabaseClient, dealId: string): Promise<DealPhoto[]> {
+  const { data, error } = await supabase
+    .from("deal_photos")
+    .select("*")
+    .eq("deal_id", dealId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as DealPhoto[];
+}
+
+/**
+ * Uploads one file to the private bucket, then records it. The storage
+ * path is opaque (random id, never the original filename) - the deal id
+ * prefix is purely for organization, not an access boundary (is_internal()
+ * via RLS is the actual boundary, same file is visible to every internal
+ * rep regardless of path).
+ */
+export async function uploadDealPhoto(
+  supabase: SupabaseClient,
+  dealId: string,
+  file: File,
+  createdBy: string | null
+): Promise<DealPhoto> {
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+  const storagePath = `${dealId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from(TRADE_IN_PHOTOS_BUCKET).upload(storagePath, file);
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from("deal_photos")
+    .insert({ deal_id: dealId, storage_path: storagePath, created_by: createdBy })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as DealPhoto;
+}
+
+/** Removes the storage object first, then its row - so a failed row delete never leaves a dangling reference to bytes that no longer exist. */
+export async function deleteDealPhoto(supabase: SupabaseClient, photo: DealPhoto): Promise<void> {
+  const { error: storageError } = await supabase.storage.from(TRADE_IN_PHOTOS_BUCKET).remove([photo.storage_path]);
+  if (storageError) throw storageError;
+
+  const { error } = await supabase.from("deal_photos").delete().eq("id", photo.id);
+  if (error) throw error;
+}
+
+/**
+ * Batched signed-URL lookup for a private bucket - returns a
+ * storage_path -> url map. Never persisted by the caller beyond component
+ * state; regenerated fresh every time (deal drawer open, or right after an
+ * upload) rather than cached, so an expired URL just means the next fetch
+ * gets a new one. 1h default expiry - long enough for a normal viewing
+ * session, short enough to bound exposure if a URL were ever copied/logged.
+ */
+export async function getSignedPhotoUrls(
+  supabase: SupabaseClient,
+  storagePaths: string[],
+  expiresInSeconds = 3600
+): Promise<Record<string, string>> {
+  if (storagePaths.length === 0) return {};
+  const { data, error } = await supabase.storage
+    .from(TRADE_IN_PHOTOS_BUCKET)
+    .createSignedUrls(storagePaths, expiresInSeconds);
+  if (error) throw error;
+  const urls: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.path && row.signedUrl) urls[row.path] = row.signedUrl;
+  }
+  return urls;
 }
