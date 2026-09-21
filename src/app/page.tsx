@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Archive,
   BarChart3,
-  CalendarClock,
+  CalendarDays,
   Download,
   Kanban,
   LayoutGrid,
@@ -36,9 +36,9 @@ import {
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
+import { CalendarView } from "@/components/calendar/CalendarView";
 import { DealCard } from "@/components/DealCard";
 import { DealDrawer } from "@/components/DealDrawer";
-import { FollowUpsView } from "@/components/FollowUpsView";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
@@ -46,7 +46,7 @@ import { RecapTable } from "@/components/RecapTable";
 import { RepresentativeTabs } from "@/components/RepresentativeTabs";
 import type { ActivityWithAuthor, Coach, Contact, Deal, DealWithContact, NewContact, PipelineStage, Profile } from "@/lib/types";
 
-type ViewMode = "pipeline" | "suivis";
+type ViewMode = "pipeline" | "calendrier";
 
 // Hidden 2026-09-15: niveau_interet is filled on ~1/370 deals, so the
 // grouping had no visible effect. State/logic below are untouched - only
@@ -563,10 +563,10 @@ function DashboardPageInner() {
         <div className="hidden sm:flex flex-wrap gap-2">
           <ViewTab active={viewMode === "pipeline"} onClick={() => setViewMode("pipeline")} icon={Table2} label="Pipeline" />
           <ViewTab
-            active={viewMode === "suivis"}
-            onClick={() => setViewMode("suivis")}
-            icon={CalendarClock}
-            label="Suivis à faire"
+            active={viewMode === "calendrier"}
+            onClick={() => setViewMode("calendrier")}
+            icon={CalendarDays}
+            label="Calendrier"
           />
         </div>
 
@@ -757,8 +757,8 @@ function DashboardPageInner() {
           </>
         )}
 
-        {viewMode === "suivis" && (
-          <FollowUpsView deals={visibleDeals} profiles={profiles} onOpen={(d) => openDeal(d.id)} />
+        {viewMode === "calendrier" && (
+          <CalendarView deals={visibleDeals} profiles={profiles} onOpen={openDeal} />
         )}
       </main>
 
@@ -782,15 +782,15 @@ function DashboardPageInner() {
           <button
             type="button"
             onClick={() => {
-              setViewMode("suivis");
+              setViewMode("calendrier");
               setShowArchived(false);
             }}
             className={`flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-11 text-[11px] font-medium transition-colors duration-150 ${
-              viewMode === "suivis" ? "text-teal" : "text-textSoft"
+              viewMode === "calendrier" ? "text-teal" : "text-textSoft"
             }`}
           >
-            <CalendarClock size={20} />
-            Suivis
+            <CalendarDays size={20} />
+            Calendrier
           </button>
           <button
             type="button"
