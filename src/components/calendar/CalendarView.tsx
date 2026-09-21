@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  addMonths,
   addWeeks,
   buildCalendarEvents,
+  formatMonthLabel,
   formatWeekLabel,
+  getMonthDays,
   getWeekDays,
   REP_FILTERS,
 } from "@/lib/calendar";
@@ -14,6 +17,7 @@ import { COLORS } from "@/lib/theme";
 import type { DealWithContact, Profile } from "@/lib/types";
 import { WeekGrid } from "./WeekGrid";
 import { DayList } from "./DayList";
+import { MonthGrid } from "./MonthGrid";
 
 interface CalendarViewProps {
   deals: DealWithContact[];
@@ -22,19 +26,24 @@ interface CalendarViewProps {
 }
 
 const UNASSIGNED_LABEL = "Non assigné";
+type Granularity = "semaine" | "mois";
 
 /**
- * Weekly calendar replacing the old "Suivis à faire" list. Purely a
- * reorganization of deals already loaded by the parent - no separate
- * fetch. Desktop gets a 7-column grid (WeekGrid), mobile a stacked
- * day-by-day list (DayList) via CSS breakpoints, same responsive
- * convention as the rest of the app (no JS viewport detection).
+ * Weekly calendar (default) or monthly grid, replacing the old "Suivis à
+ * faire" list. Purely a reorganization of deals already loaded by the
+ * parent - no separate fetch. The week path (WeekGrid/DayList) and the
+ * .ics feed are untouched by the month view added alongside it - same
+ * `anchor` date drives both, interpreted as a week or a month depending
+ * on `granularity`, so switching views keeps the same neighborhood in
+ * time instead of resetting.
  */
 export function CalendarView({ deals, profiles, onOpen }: CalendarViewProps) {
   const [anchor, setAnchor] = useState(() => new Date());
+  const [granularity, setGranularity] = useState<Granularity>("semaine");
   const [activeEmail, setActiveEmail] = useState<string | null>(null); // null = "Tout"
 
   const weekDays = useMemo(() => getWeekDays(anchor), [anchor]);
+  const monthDays = useMemo(() => getMonthDays(anchor), [anchor]);
   const allEvents = useMemo(() => buildCalendarEvents(deals), [deals]);
 
   const ownerNameById = useMemo(() => new Map(profiles.map((p) => [p.id, p.nom || p.email])), [profiles]);
@@ -70,19 +79,19 @@ export function CalendarView({ deals, profiles, onOpen }: CalendarViewProps) {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setAnchor((d) => addWeeks(d, -1))}
-            aria-label="Semaine précédente"
+            onClick={() => setAnchor((d) => (granularity === "semaine" ? addWeeks(d, -1) : addMonths(d, -1)))}
+            aria-label={granularity === "semaine" ? "Semaine précédente" : "Mois précédent"}
             className="flex items-center justify-center min-w-9 min-h-9 rounded-lg text-textSoft hover:text-teal hover:bg-surface2"
           >
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-medium text-text px-1 min-w-[150px] text-center">
-            {formatWeekLabel(weekDays)}
+            {granularity === "semaine" ? formatWeekLabel(weekDays) : formatMonthLabel(anchor)}
           </span>
           <button
             type="button"
-            onClick={() => setAnchor((d) => addWeeks(d, 1))}
-            aria-label="Semaine suivante"
+            onClick={() => setAnchor((d) => (granularity === "semaine" ? addWeeks(d, 1) : addMonths(d, 1)))}
+            aria-label={granularity === "semaine" ? "Semaine suivante" : "Mois suivant"}
             className="flex items-center justify-center min-w-9 min-h-9 rounded-lg text-textSoft hover:text-teal hover:bg-surface2"
           >
             <ChevronRight size={16} />
@@ -97,6 +106,10 @@ export function CalendarView({ deals, profiles, onOpen }: CalendarViewProps) {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 rounded-lg border border-border/20 p-0.5 mr-1">
+            <GranularityPill active={granularity === "semaine"} label="Semaine" onClick={() => setGranularity("semaine")} />
+            <GranularityPill active={granularity === "mois"} label="Mois" onClick={() => setGranularity("mois")} />
+          </div>
           <FilterPill active={activeEmail === null} label="Tout" onClick={() => setActiveEmail(null)} />
           {REP_FILTERS.map((r) => (
             <FilterPill key={r.email} active={activeEmail === r.email} label={r.label} onClick={() => setActiveEmail(r.email)} />
@@ -104,12 +117,18 @@ export function CalendarView({ deals, profiles, onOpen }: CalendarViewProps) {
         </div>
       </div>
 
-      <div className="hidden sm:block">
-        <WeekGrid days={weekDays} events={events} repColorFor={repColorFor} onOpen={onOpen} />
-      </div>
-      <div className="sm:hidden">
-        <DayList days={weekDays} events={events} repColorFor={repColorFor} onOpen={onOpen} />
-      </div>
+      {granularity === "semaine" ? (
+        <>
+          <div className="hidden sm:block">
+            <WeekGrid days={weekDays} events={events} repColorFor={repColorFor} onOpen={onOpen} />
+          </div>
+          <div className="sm:hidden">
+            <DayList days={weekDays} events={events} repColorFor={repColorFor} onOpen={onOpen} />
+          </div>
+        </>
+      ) : (
+        <MonthGrid monthAnchor={anchor} days={monthDays} events={events} repColorFor={repColorFor} onOpen={onOpen} />
+      )}
     </div>
   );
 }
@@ -121,6 +140,20 @@ function FilterPill({ active, label, onClick }: { active: boolean; label: string
       onClick={onClick}
       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors duration-150 ${
         active ? "border-teal bg-teal/10 text-teal" : "border-border/20 text-textSoft hover:border-teal/40"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function GranularityPill({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors duration-150 ${
+        active ? "bg-teal/10 text-teal" : "text-textSoft hover:text-text"
       }`}
     >
       {label}

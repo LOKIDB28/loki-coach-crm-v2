@@ -111,3 +111,27 @@ export function formatWeekLabel(days: Date[]): string {
   const endStr = end.toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" });
   return `${startStr} – ${endStr}`;
 }
+
+// --- Month view - purely additive, none of the above (week view or the
+// .ics feed, which doesn't import this file at all) is touched by any of
+// what follows. ---
+
+/** Fixed 6-row (42-day) Monday-start grid containing the month of `anchor` - includes the trailing days of the previous/next month needed to fill the grid, same convention as every standard month calendar. */
+export function getMonthDays(anchor: Date): Date[] {
+  const firstOfMonth = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const start = startOfWeek(firstOfMonth);
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
+export function addMonths(date: Date, n: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + n, 1);
+}
+
+export function formatMonthLabel(date: Date): string {
+  const label = date.toLocaleDateString("fr-CA", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
