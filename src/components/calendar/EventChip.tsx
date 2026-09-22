@@ -1,12 +1,13 @@
 "use client";
 
-import { Car, Factory, CalendarClock, Wrench } from "lucide-react";
+import { Car, Factory, Building2, CalendarClock, Wrench } from "lucide-react";
 import type { CalendarEvent, CalendarEventType } from "@/lib/calendar";
 
 const TYPE_ICONS: Record<CalendarEventType, typeof CalendarClock> = {
   next_action_at: CalendarClock,
   date_essai_routier: Car,
   date_visite_usine: Factory,
+  date_visite_bureau: Building2,
   date_rdv_service: Wrench,
 };
 

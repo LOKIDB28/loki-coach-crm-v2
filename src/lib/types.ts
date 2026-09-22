@@ -113,6 +113,11 @@ export interface Deal {
   coach_vise: string | null;
   evaluation_client: EvaluationClient | null;
   date_visite_usine: string | null;
+  // Added by 0018_add_deals_date_visite_bureau.sql - distinct from
+  // date_visite_usine above: different security rules apply on-site at the
+  // factory, so the two are tracked separately rather than one column
+  // covering both.
+  date_visite_bureau: string | null;
   date_essai_routier: string | null;
   options: string | null;
   echange_marque: string | null;

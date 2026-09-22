@@ -8,6 +8,7 @@ export type CalendarEventType =
   | "next_action_at"
   | "date_essai_routier"
   | "date_visite_usine"
+  | "date_visite_bureau"
   | "date_rdv_service";
 
 interface EventTypeConfig {
@@ -17,14 +18,21 @@ interface EventTypeConfig {
   allDay: boolean;
 }
 
-// Scope confirmed in conversation: these 4 only. date_contrat (historical,
+// Scope confirmed in conversation: these 5 only. date_contrat (historical,
 // not an upcoming appointment) and expected_close (a forecast, not a
 // dated appointment) are deliberately excluded, as is premier_contact_le
 // (retrospective, already surfaced via the DealCard "Contacté" badge).
+// date_visite_bureau (0018_add_deals_date_visite_bureau.sql) kept as its
+// own entry rather than merged with date_visite_usine - the two are a
+// different rendez-vous type in real life (different on-site security
+// rules at the factory), not a wording variant of the same thing, so this
+// calendar and the .ics feed (src/app/api/calendar/[token]/route.ts) both
+// need to know about it as a distinct type.
 export const EVENT_TYPES: EventTypeConfig[] = [
   { key: "next_action_at", label: "Relance", allDay: false },
   { key: "date_essai_routier", label: "Essai routier", allDay: false },
   { key: "date_visite_usine", label: "Visite d'usine", allDay: false },
+  { key: "date_visite_bureau", label: "Visite au bureau", allDay: false },
   { key: "date_rdv_service", label: "Rendez-vous service", allDay: true },
 ];
 

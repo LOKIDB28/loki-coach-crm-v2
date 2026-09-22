@@ -133,6 +133,7 @@ interface Section3State {
   next_action_at: string | null;
   evaluation_client: Deal["evaluation_client"];
   date_visite_usine: string | null;
+  date_visite_bureau: string | null;
   date_essai_routier: string | null;
   dirty: boolean;
   saving: boolean;
@@ -142,6 +143,7 @@ function section3Defaults(deal: DealWithContact): Section3State {
     next_action_at: deal.next_action_at,
     evaluation_client: deal.evaluation_client,
     date_visite_usine: deal.date_visite_usine,
+    date_visite_bureau: deal.date_visite_bureau,
     date_essai_routier: deal.date_essai_routier,
     dirty: false,
     saving: false,
@@ -361,6 +363,7 @@ export function DealDrawer({
         next_action_at: section3.next_action_at,
         evaluation_client: section3.evaluation_client,
         date_visite_usine: section3.date_visite_usine,
+        date_visite_bureau: section3.date_visite_bureau,
         date_essai_routier: section3.date_essai_routier,
       });
       setSection3((s) => ({ ...s, saving: false, dirty: false }));
@@ -1039,7 +1042,10 @@ export function DealDrawer({
                   </Select>
                   <p className="text-[11px] text-textSoft mt-1">Évaluation après une rencontre réelle.</p>
                 </Field>
-                <Field label="Date visite d'usine">
+                {/* Two distinct rendez-vous types, not one field for both -
+                    the factory carries different on-site security rules
+                    than the office, per conversation. */}
+                <Field label="Date visite d'usine (accès sécurisé)">
                   <TextInput
                     type="datetime-local"
                     value={toDatetimeLocalValue(section3.date_visite_usine)}
@@ -1047,6 +1053,19 @@ export function DealDrawer({
                       setSection3((s) => ({
                         ...s,
                         date_visite_usine: fromDatetimeLocalValue(e.target.value),
+                        dirty: true,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Date visite au bureau">
+                  <TextInput
+                    type="datetime-local"
+                    value={toDatetimeLocalValue(section3.date_visite_bureau)}
+                    onChange={(e) =>
+                      setSection3((s) => ({
+                        ...s,
+                        date_visite_bureau: fromDatetimeLocalValue(e.target.value),
                         dirty: true,
                       }))
                     }

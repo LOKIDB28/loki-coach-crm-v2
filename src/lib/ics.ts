@@ -8,8 +8,10 @@ export interface IcsEvent {
   id: string;
   title: string;
   description: string;
-  /** ISO 8601 timestamp - the relance's next_action_at. */
+  /** ISO 8601 timestamp for a timed event, or a bare "YYYY-MM-DD" date when allDay is true. */
   start: string;
+  /** True for a date-only event (currently only date_rdv_service) - emitted as an RFC 5545 all-day VEVENT (DTSTART/DTEND;VALUE=DATE, no time or "Z"), never routed through a Date/timezone conversion. */
+  allDay?: boolean;
 }
 
 const CRLF = "\r\n";
@@ -57,21 +59,42 @@ function formatIcsDateUtc(iso: string): string {
 
 const EVENT_DURATION_MINUTES = 30;
 
+/** "2026-09-21" -> "20260921", for DTSTART/DTEND;VALUE=DATE. */
+function formatIcsDateOnly(dateOnly: string): string {
+  return dateOnly.replace(/-/g, "");
+}
+
+/**
+ * The day after a "YYYY-MM-DD" date, still as "YYYY-MM-DD" - DTEND on an
+ * all-day VEVENT is exclusive per RFC 5545, so a 1-day event's end is the
+ * following day. Computed from UTC components only (Date.UTC to build,
+ * getUTC* to read back) - deliberately never routed through a
+ * timezone-sensitive Date parse, same discipline as parseDateOnly in
+ * lib/calendar.ts.
+ */
+function nextDateOnly(dateOnly: string): string {
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  const next = new Date(Date.UTC(y!, m! - 1, d! + 1));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
+}
+
 function buildEvent(event: IcsEvent): string {
-  const start = new Date(event.start);
-  const end = new Date(start.getTime() + EVENT_DURATION_MINUTES * 60 * 1000);
   const now = formatIcsDateUtc(new Date().toISOString());
 
-  const lines = [
-    "BEGIN:VEVENT",
-    `UID:${event.id}@loki-coach-crm`,
-    `DTSTAMP:${now}`,
-    `DTSTART:${formatIcsDateUtc(event.start)}`,
-    `DTEND:${formatIcsDateUtc(end.toISOString())}`,
-    `SUMMARY:${escapeText(event.title)}`,
-    `DESCRIPTION:${escapeText(event.description)}`,
-    "END:VEVENT",
-  ];
+  const lines = ["BEGIN:VEVENT", `UID:${event.id}@loki-coach-crm`, `DTSTAMP:${now}`];
+
+  if (event.allDay) {
+    lines.push(`DTSTART;VALUE=DATE:${formatIcsDateOnly(event.start)}`);
+    lines.push(`DTEND;VALUE=DATE:${formatIcsDateOnly(nextDateOnly(event.start))}`);
+  } else {
+    const start = new Date(event.start);
+    const end = new Date(start.getTime() + EVENT_DURATION_MINUTES * 60 * 1000);
+    lines.push(`DTSTART:${formatIcsDateUtc(event.start)}`);
+    lines.push(`DTEND:${formatIcsDateUtc(end.toISOString())}`);
+  }
+
+  lines.push(`SUMMARY:${escapeText(event.title)}`, `DESCRIPTION:${escapeText(event.description)}`, "END:VEVENT");
   return lines.map(foldLine).join(CRLF);
 }
 
