@@ -24,6 +24,7 @@ import { RateFunnelChart } from "@/components/intelligence/RateFunnelChart";
 import { RateShareChart } from "@/components/intelligence/RateShareChart";
 import { RepStageForecastChart } from "@/components/intelligence/RepStageForecastChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
+import { WidgetInfoTooltip } from "@/components/intelligence/WidgetInfoTooltip";
 import type {
   DealWithContact,
   ExchangeRateWithAuthor,
@@ -145,13 +146,24 @@ export default function IntelligencePage() {
           <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Nombre de deals actuellement à chaque étape du pipeline, tous représentants confondus. Un deal compte
+                une seule fois, à son étape actuelle seulement — ce n&apos;est pas un cumul historique de tous les
+                deals qui sont déjà passés par cette étape.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Funnel du pipeline</h2>
               <p className="text-xs text-textSoft mb-4">Nombre de deals par étape.</p>
               <PipelineFunnelChart stages={stages} counts={stageCounts} />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Compte des contacts, pas des deals — un contact avec 3 deals ouverts n&apos;apparaît qu&apos;une fois
+                ici. Basé sur le champ libre province/état saisi à la fiche contact, jamais sur la ville (non
+                géocodable) : deux orthographes différentes du même endroit (« Qc » et « Québec ») compteront comme
+                deux groupes distincts.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Contacts par province / état</h2>
               <p className="text-xs text-textSoft mb-4">
                 Basé sur le champ province/état des contacts (ville n&apos;est pas géocodable - texte libre par région).
@@ -159,7 +171,13 @@ export default function IntelligencePage() {
               <ProvinceBarChart data={provinces} />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <WidgetInfoTooltip>
+                Même donnée que le graphique en barres à gauche, en carte plutôt qu&apos;en liste — un point par
+                province/état, jamais par ville. La taille du point est relative aux autres régions affichées, pas à
+                une échelle absolue : un point deux fois plus gros représente environ deux fois plus de contacts, pas
+                un seuil fixe.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Carte des contacts par province/état</h2>
               <p className="text-xs text-textSoft mb-4">
                 Un point par région (jamais par ville - texte libre non géocodable), taille proportionnelle au nombre
@@ -168,13 +186,25 @@ export default function IntelligencePage() {
               <ProvinceMap data={provinces} />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Nombre de deals par source d&apos;acquisition déclarée, triés du plus fréquent au moins fréquent. Une
+                couleur par source, attribuée automatiquement — la couleur d&apos;une source donnée peut changer
+                d&apos;une visite à l&apos;autre si la liste des sources présentes change, ce n&apos;est pas un code
+                couleur fixe à mémoriser.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Répartition par source</h2>
               <p className="text-xs text-textSoft mb-4">Nombre de deals par source d&apos;acquisition.</p>
               <SourceBreakdownChart data={sources} />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Valeur pondérée = montant du deal × probabilité de son étape actuelle, additionné sur toutes les
+                étapes ouvertes. Un deal à 20 000 $ à une étape à 50 % de probabilité contribue 10 000 $ au total. La
+                valeur brute ignore la probabilité — c&apos;est la somme des montants tels quels. Les deux restent
+                des estimations sur des deals en cours, pas des revenus réels.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Forecast pondéré</h2>
               <p className="text-xs text-textSoft mb-4">Montant × probabilité de l&apos;étape, étapes ouvertes seulement.</p>
               <ForecastCard
@@ -186,7 +216,13 @@ export default function IntelligencePage() {
               />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <WidgetInfoTooltip>
+                Même calcul que le Forecast pondéré ci-dessus (montant × probabilité de l&apos;étape), détaillé par
+                représentant et par étape plutôt qu&apos;en un seul total. Utile pour repérer où se trouve chaque
+                deal dans le pipeline d&apos;un vendeur précis — pas pour comparer leur performance globale : un
+                vendeur avec plus de deals à un stade avancé aura naturellement des barres plus hautes.
+              </WidgetInfoTooltip>
               <h2 className="text-sm font-semibold text-text mb-1">Forecast par vendeur et par étape</h2>
               <p className="text-xs text-textSoft mb-4">
                 Version détaillée du forecast pondéré ci-dessus, par représentant et par étape ouverte.
@@ -200,7 +236,13 @@ export default function IntelligencePage() {
               />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Le « taux » ici (rate_percent) est un chiffre indépendant de l&apos;étape du pipeline et de sa
+                probabilité — ce n&apos;est pas la même donnée que le Forecast pondéré plus haut, même si les deux
+                parlent de « probabilité ». Regroupe tous les deals ayant un taux enregistré, peu importe leur étape
+                actuelle ; une tranche sans aucun deal n&apos;apparaît simplement pas dans le graphique.
+              </WidgetInfoTooltip>
               <RateShareChart
                 title="Répartition par taux (tous)"
                 description="Tous les deals ayant un taux enregistré, groupés par valeur."
@@ -209,7 +251,13 @@ export default function IntelligencePage() {
               />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5">
+              <WidgetInfoTooltip>
+                Même donnée que « Répartition par taux (tous) », en retirant les leads froids/bruts (0, 1, 5, 8 %)
+                pour ne garder que les deals jugés qualifiés. Les couleurs sont réajustées pour utiliser toute la
+                gamme d&apos;intensité sur ce sous-ensemble — la teinte d&apos;une même valeur de taux peut donc
+                différer entre ce graphique et celui du dessus, ce n&apos;est pas une incohérence.
+              </WidgetInfoTooltip>
               <RateShareChart
                 title="Opportunités qualifiées (≥10%)"
                 description="Même donnée, en excluant les leads froids/bruts (0, 1, 5, 8%)."
@@ -219,7 +267,12 @@ export default function IntelligencePage() {
               />
             </section>
 
-            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+            <section className="relative bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <WidgetInfoTooltip>
+                Même donnée que les deux graphiques « taux » ci-dessus, présentée en barres ordonnées du taux le plus
+                élevé au plus faible plutôt qu&apos;en proportions. Utile pour voir la distribution/la queue de la
+                répartition d&apos;un coup d&apos;œil, pas seulement la part de chaque tranche.
+              </WidgetInfoTooltip>
               <RateFunnelChart deals={dealsWithRate} totalDeals={deals.length} />
             </section>
           </div>
