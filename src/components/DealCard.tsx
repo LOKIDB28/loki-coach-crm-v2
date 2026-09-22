@@ -29,11 +29,18 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
   const overdue = isOverdue(deal.next_action_at);
   const soon = !overdue && isWithinHours(deal.next_action_at, 48);
 
-  // Only shown for a lead that's NEVER been contacted - disappears for good
-  // the moment premier_contact_le is set, regardless of pipeline stage (see
-  // lib/theme.ts LEAD_AGE_COLORS for why these are classic traffic-light
-  // colors instead of the app's own palette).
-  const leadAgeDays = deal.premier_contact_le ? null : daysSince(deal.created_at);
+  // Only shown for a lead that's NEVER been contacted AND is still at
+  // Prospect/Contact - reaching Rencontre or beyond (even via the kanban
+  // drag/arrows, without ever clicking "Marquer comme contacté") already
+  // proves someone on the team has taken the file, so the badge disappears
+  // there regardless of premier_contact_le. Recomputed live from current
+  // stage + premier_contact_le on every render, not a one-way flag - so it
+  // would reappear if a deal were ever moved back to an early stage while
+  // still uncontacted, which is the correct behavior for what the badge
+  // actually claims to represent. See lib/theme.ts LEAD_AGE_COLORS for why
+  // these are classic traffic-light colors instead of the app's own palette.
+  const isEarlyStage = stage?.code === "prospect" || stage?.code === "contact";
+  const leadAgeDays = !deal.premier_contact_le && isEarlyStage ? daysSince(deal.created_at) : null;
   const leadAgeColor =
     leadAgeDays === null
       ? null
