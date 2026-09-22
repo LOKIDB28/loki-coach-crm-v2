@@ -65,6 +65,17 @@ export function daysOverdue(value: string): number {
   return Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
 }
 
+/**
+ * Whole days since any past timestamp - same math as daysOverdue, but that
+ * one is named/documented for follow-up lateness specifically. Kept
+ * separate so a call site about lead age (e.g. DealCard's uncontacted-lead
+ * badge, days since created_at) doesn't read as if it's about an overdue
+ * relance.
+ */
+export function daysSince(value: string): number {
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
+}
+
 /** True when value is in the future but within the next `hours` hours. */
 export function isWithinHours(value: string | null | undefined, hours: number): boolean {
   if (!value) return false;

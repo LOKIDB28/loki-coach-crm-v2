@@ -2,8 +2,8 @@
 
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
-import { daysOverdue, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
-import { IMPORT_BADGE_COLOR } from "@/lib/theme";
+import { daysOverdue, daysSince, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
+import { IMPORT_BADGE_COLOR, LEAD_AGE_COLORS } from "@/lib/theme";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
 interface DealCardProps {
@@ -28,6 +28,20 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
 
   const overdue = isOverdue(deal.next_action_at);
   const soon = !overdue && isWithinHours(deal.next_action_at, 48);
+
+  // Only shown for a lead that's NEVER been contacted - disappears for good
+  // the moment premier_contact_le is set, regardless of pipeline stage (see
+  // lib/theme.ts LEAD_AGE_COLORS for why these are classic traffic-light
+  // colors instead of the app's own palette).
+  const leadAgeDays = deal.premier_contact_le ? null : daysSince(deal.created_at);
+  const leadAgeColor =
+    leadAgeDays === null
+      ? null
+      : leadAgeDays <= 10
+      ? LEAD_AGE_COLORS.green
+      : leadAgeDays <= 20
+      ? LEAD_AGE_COLORS.yellow
+      : LEAD_AGE_COLORS.red;
 
   return (
     <button
@@ -147,11 +161,27 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
           {/* Main point of this indicator: let the team see at a glance
               whether this lead has already been called, without opening the
               dossier - avoids double outreach. Same dot+label language as
-              the two above. */}
+              the two above. Mutually exclusive with the lead-age badge
+              below - a deal is never both "never contacted" and "Contacté". */}
           {deal.premier_contact_le && (
             <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
               <span className="inline-block w-2 h-2 rounded-full bg-teal" />
               Contacté
+            </span>
+          )}
+          {/* Lead-age badge - only while never contacted (see leadAgeDays
+              above). Dot AND text both take the tier color, unlike the
+              neutral-text siblings above - deliberate exception per the
+              LEAD_AGE_COLORS comment: instant recognition over consistency
+              for this one badge. */}
+          {leadAgeColor && (
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-semibold"
+              style={{ color: leadAgeColor }}
+              title={`Lead non contacté depuis ${leadAgeDays} jour${leadAgeDays === 1 ? "" : "s"}`}
+            >
+              <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: leadAgeColor }} />
+              {leadAgeDays}j
             </span>
           )}
         </div>

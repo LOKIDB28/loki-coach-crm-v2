@@ -44,7 +44,35 @@ export const SOURCE_SUGGESTIONS = [
   "Concessionnaire",
   "Publicité",
   "Événement sportif",
+  "Walk-in",
+  "Référence interne",
 ] as const;
+
+// Fixed display order for the 5 real internal team members, confirmed in
+// conversation - "Tous" (RepresentativeTabs) always sorts first regardless,
+// that's handled by the caller, not this list. Matched by normalized
+// (accent/case-insensitive) `nom`, not id/email, since that's the one field
+// guaranteed stable across environments. Values below are the exact `nom`
+// rows confirmed by direct SQL query against profiles - notably "Jeff
+// Gagne" (no accent) and "Pierre-Mathieu" (no "Roy"), not the fuller names
+// that would otherwise be guessed. Anyone not in this list (a new rep added
+// later) sorts after these five, in whatever order the caller's own list
+// already had them - never dropped. Shared by RepresentativeTabs (rep
+// filter tabs) and DealDrawer (internal-referral picker) so there is
+// exactly one copy of this fragile spelling list, not two that can drift.
+const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
+
+export function normalizeRepName(name: string): string {
+  return name.normalize("NFD").replace(DIACRITICS_RE, "").trim().toLowerCase();
+}
+
+export const REP_TAB_ORDER = [
+  "Frederick Sabourin",
+  "Jeff Gagne",
+  "Pierre-Mathieu",
+  "Marie-Pierre Boutin",
+  "Louis-Philippe Deblois",
+].map(normalizeRepName);
 
 export interface Interet {
   v: string;

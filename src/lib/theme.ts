@@ -37,6 +37,21 @@ export const RELANCE_COLORS = {
 // places, both already reading from this file.
 export const IMPORT_BADGE_COLOR = "#7C3AED";
 
+// Classic traffic-light colors, deliberately distinct from every other
+// color in this project - a fourth explicit exception, reserved to
+// DealCard's uncontacted-lead-age badge only. By explicit client request:
+// instant recognition takes priority over palette consistency for this one
+// badge, so this is NOT COLORS.green (#A6FA30 - too lime/neon to read as a
+// classic "green light") and NOT RELANCE_COLORS.dangerRed (#D91A2A -
+// already reserved to the relance badge, and both can appear on the same
+// card at once, e.g. an uncontacted lead with an overdue relance, so
+// sharing a hex there would blur two unrelated signals into one).
+export const LEAD_AGE_COLORS = {
+  green: "#22C55E", // 1-10 days since created_at, uncontacted
+  yellow: "#EAB308", // 11-20 days
+  red: "#DC2626", // 21-30+ days - stays red indefinitely past 30
+} as const;
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =

@@ -28,6 +28,8 @@ import {
   findCoachMatchesForDeal,
   fullName,
   INTERETS,
+  normalizeRepName,
+  REP_TAB_ORDER,
   SOURCE_SUGGESTIONS,
   stageIcon,
 } from "@/lib/domain";
@@ -64,6 +66,10 @@ interface DealDrawerProps {
 
 interface Section1State {
   source: string;
+  // Only meaningful while source === "Référence interne" - the field itself
+  // stays populated if the rep switches source away and back, but is only
+  // ever shown/saved while that condition holds (see saveSection1).
+  reference_par_profile_id: string | null;
   niveau_interet: Deal["niveau_interet"];
   type_vehicule_vise: Deal["type_vehicule_vise"];
   // Unit qualification - a single edit point now. coach_id (moved here from
@@ -93,6 +99,7 @@ interface Section1State {
 function section1Defaults(deal: DealWithContact): Section1State {
   return {
     source: deal.contact.source ?? "",
+    reference_par_profile_id: deal.reference_par_profile_id,
     niveau_interet: deal.niveau_interet,
     type_vehicule_vise: deal.type_vehicule_vise,
     coach_id: deal.coach_id,
@@ -291,6 +298,11 @@ export function DealDrawer({
       await Promise.all([
         onUpdateContact({ source: section1.source || null }),
         onUpdateDeal({
+          // Cleared whenever source isn't "Référence interne", regardless
+          // of what's still sitting in local draft state - never persists a
+          // referrer for a deal no longer attributed as an internal
+          // referral.
+          reference_par_profile_id: section1.source.trim() === "Référence interne" ? section1.reference_par_profile_id : null,
           niveau_interet: section1.niveau_interet,
           type_vehicule_vise: section1.type_vehicule_vise,
           coach_id: section1.coach_id,
@@ -414,6 +426,17 @@ export function DealDrawer({
   const stageByCode = (code: string) => stages.find((s) => s.code === code);
   const prospectStage = stageByCode("prospect");
   const contactStage = stageByCode("contact");
+
+  // Internal-referral picker (Section 1, "Référence interne" source) -
+  // "client" role profiles can't have made a referral, and reuses the same
+  // fixed 5-person order as RepresentativeTabs so both lists read the same.
+  const internalProfiles = profiles
+    .filter((p) => p.role === "admin" || p.role === "internal")
+    .sort((a, b) => {
+      const ia = REP_TAB_ORDER.indexOf(normalizeRepName(a.nom));
+      const ib = REP_TAB_ORDER.indexOf(normalizeRepName(b.nom));
+      return (ia === -1 ? REP_TAB_ORDER.length : ia) - (ib === -1 ? REP_TAB_ORDER.length : ib);
+    });
 
   // Once first contact is logged, going back to Prospect specifically is
   // blocked - every other backward move (e.g. Rencontre -> Contact) stays
@@ -800,6 +823,24 @@ export function DealDrawer({
                   </Select>
                 </Field>
               </div>
+
+              {section1.source.trim() === "Référence interne" && (
+                <Field label="Référé par (interne)">
+                  <Select
+                    value={section1.reference_par_profile_id ?? ""}
+                    onChange={(e) =>
+                      setSection1((s) => ({ ...s, reference_par_profile_id: e.target.value || null, dirty: true }))
+                    }
+                  >
+                    <option value="">—</option>
+                    {internalProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nom || p.email}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
 
               {/* Single edit point for "which unit does this client want" -
                   previously split between this Select (once in Section 2)

@@ -146,6 +146,11 @@ export interface Deal {
   // trigger auto-logs an 'autre' activity (who/when) the moment this
   // transitions from null to a real timestamp.
   premier_contact_le: string | null;
+
+  // Added by 0016_add_deals_reference_par_profile_id.sql - which internal
+  // team member (profiles.id) made the referral, set only when
+  // contacts.source = "Référence interne" (see DealDrawer Section 1).
+  reference_par_profile_id: string | null;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {

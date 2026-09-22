@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizeRepName, REP_TAB_ORDER } from "@/lib/domain";
 import type { Profile } from "@/lib/types";
 
 interface RepresentativeTabsProps {
@@ -13,26 +14,6 @@ interface RepresentativeTabsProps {
   /** Resets to "Tous" - always clears the whole selection, never just adds itself as one more choice. */
   onSelectAll: () => void;
 }
-
-const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
-
-function normalizeRepName(name: string): string {
-  return name.normalize("NFD").replace(DIACRITICS_RE, "").trim().toLowerCase();
-}
-
-// Fixed display order confirmed in conversation, "Tous" always first - the
-// profiles list itself stays dynamic (live from Supabase), this only
-// controls the order the fetched rows render in. Matched by normalized
-// (accent/case-insensitive) `nom`, not id/email, since that's the one field
-// guaranteed stable across environments. Values below are the exact `nom`
-// rows confirmed by direct SQL query against profiles - notably "Jeff Gagne"
-// (no accent) and "Pierre-Mathieu" (no "Roy"), not the fuller names that
-// would otherwise be guessed. Anyone not in this list (a new rep added
-// later) sorts after these five, in whatever order the query returned them
-// - never dropped.
-const REP_TAB_ORDER = ["Frederick Sabourin", "Jeff Gagne", "Pierre-Mathieu", "Marie-Pierre Boutin", "Louis-Philippe Deblois"].map(
-  normalizeRepName
-);
 
 /** "Tous" + one tab per team member, driven by the live profiles list instead of a hardcoded array. Multi-select: several rep tabs can be active at once (e.g. comparing two reps' portfolios for duplicates), "Tous" always resets the whole selection rather than joining it as one more choice. */
 export function RepresentativeTabs({
