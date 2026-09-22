@@ -7,6 +7,7 @@ import type {
   Deal,
   DealPhoto,
   DealWithContact,
+  ExchangeRateWithAuthor,
   ForecastByRepRow,
   NewContact,
   PipelineStage,
@@ -301,4 +302,35 @@ export async function getSignedPhotoUrls(
     if (row.path && row.signedUrl) urls[row.path] = row.signedUrl;
   }
   return urls;
+}
+
+// --- Exchange rate (LOKI Intelligence CAD/USD toggle) ---------------------
+// See supabase/migrations/0020_create_exchange_rates.sql - always exactly
+// one row.
+
+export async function fetchExchangeRate(supabase: SupabaseClient): Promise<ExchangeRateWithAuthor> {
+  const { data, error } = await supabase
+    .from("exchange_rates")
+    .select("*, updated_by_profile:profiles(id, nom, email, role, created_at)")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error) throw error;
+  return data as unknown as ExchangeRateWithAuthor;
+}
+
+export async function updateExchangeRate(
+  supabase: SupabaseClient,
+  id: string,
+  usdToCad: number,
+  updatedBy: string | null
+): Promise<ExchangeRateWithAuthor> {
+  const { data, error } = await supabase
+    .from("exchange_rates")
+    .update({ usd_to_cad: usdToCad, updated_at: new Date().toISOString(), updated_by: updatedBy })
+    .eq("id", id)
+    .select("*, updated_by_profile:profiles(id, nom, email, role, created_at)")
+    .single();
+  if (error) throw error;
+  return data as unknown as ExchangeRateWithAuthor;
 }

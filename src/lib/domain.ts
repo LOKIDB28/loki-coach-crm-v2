@@ -46,6 +46,10 @@ export const SOURCE_SUGGESTIONS = [
   "Événement sportif",
   "Walk-in",
   "Référence interne",
+  "Indie",
+  "Nascar",
+  "PGA",
+  "Golf",
 ] as const;
 
 // Fixed display order for the 5 real internal team members, confirmed in

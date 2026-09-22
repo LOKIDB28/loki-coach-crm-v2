@@ -197,6 +197,24 @@ export interface DealPhoto {
   created_at: string;
 }
 
+/**
+ * Shared, manually-editable USD->CAD rate for LOKI Intelligence's CAD/USD
+ * display toggle - see supabase/migrations/0020_create_exchange_rates.sql.
+ * Always exactly one row; "updating the rate" is an UPDATE on this row's
+ * id, never a new insert.
+ */
+export interface ExchangeRate {
+  id: string;
+  usd_to_cad: number;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** ExchangeRate joined with the profile who last updated it, as fetched for display. */
+export interface ExchangeRateWithAuthor extends ExchangeRate {
+  updated_by_profile: Profile | null;
+}
+
 // Read-only rows from loki-crm-prod's reporting views (public.v_sources,
 // public.v_forecast_par_rep) - not covered by RLS policies/grants specific
 // to this app, they inherit the same "interne" SELECT access as the base

@@ -6,50 +6,74 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   fetchDeals,
+  fetchExchangeRate,
   fetchForecastByRep,
   fetchPipelineStages,
+  fetchProfiles,
   fetchProvinceBreakdown,
   fetchSourceBreakdown,
+  updateExchangeRate,
 } from "@/lib/data";
 import { getErrorMessage } from "@/lib/format";
+import { ExchangeRateBar } from "@/components/intelligence/ExchangeRateBar";
 import { ForecastCard } from "@/components/intelligence/ForecastCard";
 import { PipelineFunnelChart } from "@/components/intelligence/PipelineFunnelChart";
 import { ProvinceBarChart } from "@/components/intelligence/ProvinceBarChart";
 import { ProvinceMap } from "@/components/intelligence/ProvinceMap";
 import { RateFunnelChart } from "@/components/intelligence/RateFunnelChart";
 import { RateShareChart } from "@/components/intelligence/RateShareChart";
+import { RepStageForecastChart } from "@/components/intelligence/RepStageForecastChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
-import type { DealWithContact, ForecastByRepRow, PipelineStage, SourceBreakdownRow } from "@/lib/types";
+import type {
+  DealWithContact,
+  ExchangeRateWithAuthor,
+  ForecastByRepRow,
+  PipelineStage,
+  Profile,
+  SourceBreakdownRow,
+} from "@/lib/types";
 
 export default function IntelligencePage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [deals, setDeals] = useState<DealWithContact[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [provinces, setProvinces] = useState<{ province: string; count: number }[]>([]);
   const [sources, setSources] = useState<SourceBreakdownRow[]>([]);
   const [forecast, setForecast] = useState<ForecastByRepRow[]>([]);
+  const [exchangeRate, setExchangeRate] = useState<ExchangeRateWithAuthor | null>(null);
+  const [currency, setCurrency] = useState<"CAD" | "USD">("CAD");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, [supabase]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const [dealRows, stageRows, provinceRows, sourceRows, forecastRows] = await Promise.all([
+        const [dealRows, stageRows, profileRows, provinceRows, sourceRows, forecastRows, rate] = await Promise.all([
           fetchDeals(supabase),
           fetchPipelineStages(supabase),
+          fetchProfiles(supabase),
           fetchProvinceBreakdown(supabase),
           fetchSourceBreakdown(supabase),
           fetchForecastByRep(supabase),
+          fetchExchangeRate(supabase),
         ]);
         setDeals(dealRows);
         setStages(stageRows);
+        setProfiles(profileRows);
         setProvinces(provinceRows);
         setSources(sourceRows);
         setForecast(forecastRows);
+        setExchangeRate(rate);
       } catch (err) {
         setError(getErrorMessage(err, "Erreur de chargement."));
       } finally {
@@ -57,6 +81,12 @@ export default function IntelligencePage() {
       }
     })();
   }, [supabase]);
+
+  async function handleUpdateExchangeRate(usdToCad: number) {
+    if (!exchangeRate) return;
+    const updated = await updateExchangeRate(supabase, exchangeRate.id, usdToCad, userId);
+    setExchangeRate(updated);
+  }
 
   const stageCounts = useMemo(() => {
     const counts: Record<number, number> = {};
@@ -72,15 +102,37 @@ export default function IntelligencePage() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/15 bg-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
-            aria-label="Retour au dashboard"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="text-lg font-semibold text-text">LOKI Intelligence</h1>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Retour au dashboard"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <h1 className="text-lg font-semibold text-text">LOKI Intelligence</h1>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {exchangeRate && <ExchangeRateBar rate={exchangeRate} onUpdate={handleUpdateExchangeRate} />}
+            {/* Disabled until the shared rate has loaded - never convert with a missing rate. */}
+            <div className="flex items-center gap-1 rounded-lg border border-border/20 p-0.5">
+              {(["CAD", "USD"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  disabled={c === "USD" && !exchangeRate}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+                    currency === c ? "bg-teal/10 text-teal" : "text-textSoft hover:text-text"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -125,7 +177,27 @@ export default function IntelligencePage() {
             <section className="bg-surface border border-border/15 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-text mb-1">Forecast pondéré</h2>
               <p className="text-xs text-textSoft mb-4">Montant × probabilité de l&apos;étape, étapes ouvertes seulement.</p>
-              <ForecastCard rows={forecast} totalDeals={deals.length} dealsWithMontant={dealsWithMontant} />
+              <ForecastCard
+                rows={forecast}
+                totalDeals={deals.length}
+                dealsWithMontant={dealsWithMontant}
+                currency={currency}
+                usdToCad={exchangeRate?.usd_to_cad}
+              />
+            </section>
+
+            <section className="bg-surface border border-border/15 rounded-xl p-5 lg:col-span-2">
+              <h2 className="text-sm font-semibold text-text mb-1">Forecast par vendeur et par étape</h2>
+              <p className="text-xs text-textSoft mb-4">
+                Version détaillée du forecast pondéré ci-dessus, par représentant et par étape ouverte.
+              </p>
+              <RepStageForecastChart
+                deals={deals}
+                stages={stages}
+                profiles={profiles}
+                currency={currency}
+                usdToCad={exchangeRate?.usd_to_cad}
+              />
             </section>
 
             <section className="bg-surface border border-border/15 rounded-xl p-5">

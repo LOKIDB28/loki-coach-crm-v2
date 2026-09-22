@@ -25,13 +25,28 @@ export function formatDate(value: string | null | undefined): string {
   });
 }
 
-export function formatCurrency(value: number | null | undefined): string {
+/**
+ * `value` is always stored/passed in as CAD (deals.montant has no currency
+ * column - see 0010_import_pipedrive_deals.sql, USD Pipedrive deals were
+ * converted to CAD once at import time). `usdToCad` is the live, editable
+ * rate from public.exchange_rates (lib/data.ts fetchExchangeRate) - this
+ * function stays pure/Supabase-free per the file header, so it never
+ * fetches that itself, only converts with whatever the caller already has
+ * loaded. Every existing call site keeps working unchanged (both extra
+ * params are optional, default CAD).
+ */
+export function formatCurrency(
+  value: number | null | undefined,
+  currency: "CAD" | "USD" = "CAD",
+  usdToCad?: number
+): string {
   if (value === null || value === undefined) return "—";
+  const amount = currency === "USD" && usdToCad ? value / usdToCad : value;
   return new Intl.NumberFormat("fr-CA", {
     style: "currency",
-    currency: "CAD",
+    currency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(amount);
 }
 
 /** Converts a Date/ISO string to the value a <input type="datetime-local"> expects, in local time. */

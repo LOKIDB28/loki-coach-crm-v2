@@ -7,6 +7,8 @@ interface ForecastCardProps {
   rows: ForecastByRepRow[];
   totalDeals: number;
   dealsWithMontant: number;
+  currency: "CAD" | "USD";
+  usdToCad?: number;
 }
 
 /**
@@ -16,7 +18,7 @@ interface ForecastCardProps {
  * a stat card with an explicit sample-size caveat is the honest way to
  * show a real (if incomplete) number instead of a misleadingly confident one.
  */
-export function ForecastCard({ rows, totalDeals, dealsWithMontant }: ForecastCardProps) {
+export function ForecastCard({ rows, totalDeals, dealsWithMontant, currency, usdToCad }: ForecastCardProps) {
   const totals = rows.reduce(
     (acc, r) => ({
       valeur_brute: acc.valeur_brute + Number(r.valeur_brute),
@@ -39,11 +41,11 @@ export function ForecastCard({ rows, totalDeals, dealsWithMontant }: ForecastCar
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-border/15 bg-surface p-4">
           <div className="text-xs text-textSoft mb-1">Valeur brute</div>
-          <div className="text-xl font-bold text-text">{formatCurrency(totals.valeur_brute)}</div>
+          <div className="text-xl font-bold text-text">{formatCurrency(totals.valeur_brute, currency, usdToCad)}</div>
         </div>
         <div className="rounded-xl border border-border/15 bg-surface p-4">
           <div className="text-xs text-textSoft mb-1">Valeur pondérée</div>
-          <div className="text-xl font-bold text-teal">{formatCurrency(totals.valeur_ponderee)}</div>
+          <div className="text-xl font-bold text-teal">{formatCurrency(totals.valeur_ponderee, currency, usdToCad)}</div>
         </div>
         <div className="rounded-xl border border-border/15 bg-surface p-4 col-span-2 sm:col-span-1">
           <div className="text-xs text-textSoft mb-1">Deals ouverts</div>
@@ -68,10 +70,10 @@ export function ForecastCard({ rows, totalDeals, dealsWithMontant }: ForecastCar
                   <td className="px-3 py-2 text-text">{r.proprietaire}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-textSoft">{Number(r.nb_deals)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-textSoft">
-                    {formatCurrency(Number(r.valeur_brute))}
+                    {formatCurrency(Number(r.valeur_brute), currency, usdToCad)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-teal">
-                    {formatCurrency(Number(r.valeur_ponderee))}
+                    {formatCurrency(Number(r.valeur_ponderee), currency, usdToCad)}
                   </td>
                 </tr>
               ))}
