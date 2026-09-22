@@ -32,7 +32,20 @@ export function WidgetInfoTooltip({ children }: WidgetInfoTooltipProps) {
   }, [open]);
 
   return (
-    <div ref={ref} className="absolute top-3 right-3 z-10">
+    // z-[1500]/z-[1600] (not Tailwind's default z-10/z-20 scale, which
+    // tops out at z-50) - the province map widget renders a Leaflet map as
+    // a sibling here, and Leaflet's own panes/controls go up to z-index
+    // 1000 (leaflet.css: .leaflet-tooltip-pane 650, .leaflet-popup-pane
+    // 700, .leaflet-top/.leaflet-bottom controls 1000) - confirmed by
+    // reading the installed package's CSS, not guessed. Both the trigger
+    // button and the popover need to clear that, not just the popover:
+    // .leaflet-container doesn't establish its own stacking context
+    // (position: relative alone doesn't, without a z-index), so its
+    // high-z-index descendants compete directly with this component's in
+    // the same shared context and would otherwise render on top of - and
+    // block clicks on - the button itself, not just visually cover the
+    // popover text.
+    <div ref={ref} className="absolute top-3 right-3 z-[1500]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -43,7 +56,7 @@ export function WidgetInfoTooltip({ children }: WidgetInfoTooltipProps) {
         *
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-72 max-w-[80vw] rounded-lg border border-border/15 bg-surface shadow-lg p-3 text-xs text-textSoft leading-relaxed z-20">
+        <div className="absolute right-0 mt-1 w-72 max-w-[80vw] rounded-lg border border-border/15 bg-surface shadow-lg p-3 text-xs text-textSoft leading-relaxed z-[1600]">
           {children}
         </div>
       )}
