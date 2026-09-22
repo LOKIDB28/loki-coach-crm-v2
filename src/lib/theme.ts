@@ -69,6 +69,17 @@ export const REP_COLORS = {
   pm: "#719A73",
 } as const;
 
+// Outside the official brand palette (teal/onyx/paper/stone/vert vif) - a
+// sixth explicit exception, reserved exclusively for the "LOKI
+// Intelligence" button in the main dashboard header (desktop nav + its
+// mobile menu equivalent). The one destination button deliberately meant
+// to pop instead of blend in with the other secondary actions next to it -
+// not a general yellow to reuse anywhere else without rethinking this
+// decision first. Applied inline (style={{backgroundColor}}) rather than
+// a Tailwind arbitrary-value class, same as IMPORT_BADGE_COLOR above - only
+// two call sites, both already reading from this file.
+export const INTELLIGENCE_YELLOW = "#EDFF00";
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =

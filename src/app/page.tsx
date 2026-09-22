@@ -39,6 +39,7 @@ import {
 } from "@/lib/data";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
+import { INTELLIGENCE_YELLOW } from "@/lib/theme";
 import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
 import { CalendarView } from "@/components/calendar/CalendarView";
 import { DealCard } from "@/components/DealCard";
@@ -526,7 +527,8 @@ function DashboardPageInner() {
                 one destination button we want to pop instead of blend in. */}
             <Link
               href="/intelligence"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-[#EDFF00] text-onyx hover:opacity-90 transition-opacity duration-150"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg text-onyx hover:opacity-90 transition-opacity duration-150"
+              style={{ backgroundColor: INTELLIGENCE_YELLOW }}
             >
               <BarChart3 size={14} /> LOKI Intelligence
             </Link>
@@ -595,7 +597,8 @@ function DashboardPageInner() {
                     <Link
                       href="/intelligence"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-onyx bg-[#EDFF00] hover:opacity-90"
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-onyx hover:opacity-90"
+                      style={{ backgroundColor: INTELLIGENCE_YELLOW }}
                     >
                       <BarChart3 size={16} /> LOKI Intelligence
                     </Link>
