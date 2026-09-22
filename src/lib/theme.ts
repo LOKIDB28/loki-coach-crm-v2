@@ -52,6 +52,23 @@ export const LEAD_AGE_COLORS = {
   red: "#DC2626", // 21-30+ days - stays red indefinitely past 30
 } as const;
 
+// Outside the official brand palette, reserved exclusively for the 3 bars
+// in RepStageForecastChart.tsx (LOKI Intelligence, "Forecast par vendeur
+// et par étape") - a fifth explicit exception. Fixed per-rep colors chosen
+// by the client rather than the hash-based assignCategoricalColors used
+// for other charts, since a rep's color should stay the same bar-to-bar
+// regardless of which other reps happen to be present. PM's #719A73 is a
+// deliberately muted sage green, not a lighter/darker shade of Fred's
+// #ACEC00 (a vivid neon-lime) or of COLORS.green (#A6FA30, brand green,
+// used elsewhere for the "Gagné" badge etc.) - checked pairwise (RGB
+// distance, WCAG contrast against onyx) before shipping, all three read as
+// distinct on the app's dark surface, not just on paper.
+export const REP_COLORS = {
+  fred: "#ACEC00",
+  jeff: "#1F73C2",
+  pm: "#719A73",
+} as const;
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =

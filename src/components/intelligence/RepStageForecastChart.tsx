@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { REP_FILTERS } from "@/lib/calendar";
-import { assignCategoricalColors } from "@/lib/domain";
 import { formatCurrency } from "@/lib/format";
-import { CHART_TOOLTIP_STYLE } from "@/lib/theme";
+import { CHART_TOOLTIP_STYLE, REP_COLORS } from "@/lib/theme";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 interface RepStageForecastChartProps {
@@ -23,6 +22,16 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "valeur_brute", label: "Valeur brute" },
   { key: "valeur_ponderee", label: "Valeur pondérée" },
 ];
+
+// Fixed per-rep colors (lib/theme.ts REP_COLORS) rather than the
+// hash-based assignCategoricalColors used elsewhere - client-chosen so
+// each rep's bar color stays the same regardless of which other reps are
+// present, not reassigned if the set ever changes.
+const REP_COLOR_BY_LABEL: Record<(typeof REP_FILTERS)[number]["label"], string> = {
+  Fred: REP_COLORS.fred,
+  Jeff: REP_COLORS.jeff,
+  PM: REP_COLORS.pm,
+};
 
 /**
  * Graphique par vendeur (Jeff/PM/Fred - REP_FILTERS, lib/calendar.ts, the
@@ -49,8 +58,6 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
       ),
     [profiles]
   );
-
-  const repColors = useMemo(() => assignCategoricalColors(reps.map((r) => r.label)), [reps]);
 
   const data = useMemo(
     () =>
@@ -122,7 +129,7 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             {reps.map((rep) => (
-              <Bar key={rep.label} dataKey={rep.label} fill={repColors.get(rep.label)} radius={[4, 4, 0, 0]} />
+              <Bar key={rep.label} dataKey={rep.label} fill={REP_COLOR_BY_LABEL[rep.label]} radius={[4, 4, 0, 0]} />
             ))}
           </BarChart>
         </ResponsiveContainer>
