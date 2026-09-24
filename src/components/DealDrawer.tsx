@@ -433,8 +433,10 @@ export function DealDrawer({
   // Internal-referral picker (Section 1, "Référence interne" source) -
   // "client" role profiles can't have made a referral, and reuses the same
   // fixed 5-person order as RepresentativeTabs so both lists read the same.
+  // is_system_account excluded explicitly - a system/test account (qa-bot)
+  // never made a real referral, regardless of its role.
   const internalProfiles = profiles
-    .filter((p) => p.role === "admin" || p.role === "internal")
+    .filter((p) => (p.role === "admin" || p.role === "internal") && !p.is_system_account)
     .sort((a, b) => {
       const ia = REP_TAB_ORDER.indexOf(normalizeRepName(a.nom));
       const ib = REP_TAB_ORDER.indexOf(normalizeRepName(b.nom));

@@ -17,7 +17,7 @@ const NON_ASSIGNE = "__non_assigne__";
  */
 export function RecapTable({ deals, profiles }: RecapTableProps) {
   const rows: { key: string; label: string }[] = [
-    ...profiles.map((p) => ({ key: p.id, label: p.nom || p.email || "Sans nom" })),
+    ...profiles.filter((p) => !p.is_system_account).map((p) => ({ key: p.id, label: p.nom || p.email || "Sans nom" })),
     { key: NON_ASSIGNE, label: "Non assigné" },
   ];
 

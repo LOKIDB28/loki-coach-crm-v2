@@ -401,11 +401,14 @@ function DashboardPageInner() {
   // Rep filter tabs show only role="internal" profiles with at least one
   // active deal - no hardcoded name list, so this stays correct on its own
   // as assignments change (e.g. Marie-Pierre reappears the day she's
-  // assigned a deal; qa-bot or an admin can never appear). Scoped to this
-  // one prop only - RecapTable/CalendarView/the DealDrawer referral picker
-  // etc. still see the full, unfiltered `profiles`.
+  // assigned a deal). is_system_account is checked on top as the
+  // explicit, durable exclusion (qa-bot etc.) - not relying on role/deal
+  // count alone, which are incidental and could theoretically stop
+  // excluding a system account by accident. Scoped to this one prop only -
+  // RecapTable/CalendarView/the DealDrawer referral picker etc. still see
+  // the full, unfiltered `profiles`.
   const repTabProfiles = useMemo(
-    () => profiles.filter((p) => p.role === "internal" && activeDealOwnerIds.has(p.id)),
+    () => profiles.filter((p) => p.role === "internal" && !p.is_system_account && activeDealOwnerIds.has(p.id)),
     [profiles, activeDealOwnerIds]
   );
 

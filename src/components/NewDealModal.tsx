@@ -160,11 +160,13 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
             <Field label="Représentant">
               <Select value={draft.owner_id} onChange={(e) => update("owner_id", e.target.value)}>
                 <option value="">Non assigné</option>
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom || p.email}
-                  </option>
-                ))}
+                {profiles
+                  .filter((p) => !p.is_system_account)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nom || p.email}
+                    </option>
+                  ))}
               </Select>
             </Field>
             <Field label="Source">

@@ -18,7 +18,7 @@ import type {
 export async function fetchProfiles(supabase: SupabaseClient): Promise<Profile[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, nom, email, role, created_at")
+    .select("id, nom, email, role, created_at, is_system_account")
     .order("nom", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Profile[];

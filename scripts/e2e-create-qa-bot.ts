@@ -1,8 +1,11 @@
 /**
- * One-time setup: creates a dedicated qa-bot profile (role: internal) for
- * Playwright e2e tests, so automated test sessions never reuse a real
+ * One-time setup: creates a dedicated qa-bot profile (role: internal,
+ * is_system_account: true - see 0023_add_profiles_is_system_account.sql)
+ * for Playwright e2e tests, so automated test sessions never reuse a real
  * human's account - keeps test activity clearly separate from real human
- * activity in activities/audit trails. Safe to re-run: does nothing if a
+ * activity in activities/audit trails, and is_system_account keeps it out
+ * of every rep-selection UI regardless of role or deal assignments. Safe
+ * to re-run: does nothing but verify/correct is_system_account if a
  * profile with this email already exists.
  *
  * Usage: npx tsx scripts/e2e-create-qa-bot.ts
@@ -38,7 +41,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 async function main() {
   const { data: existingProfile, error: lookupError } = await supabaseAdmin
     .from("profiles")
-    .select("id, nom, email, role")
+    .select("id, nom, email, role, is_system_account")
     .eq("email", testEmail)
     .maybeSingle();
   if (lookupError) throw lookupError;
@@ -49,6 +52,17 @@ async function main() {
       console.warn(
         `Warning: existing role is "${existingProfile.role}", not "internal" as requested - not changing it automatically, update it yourself if that's wrong.`
       );
+    }
+    // Unlike role above, is_system_account is enforced (not just warned
+    // about) on every run - it's the one property this whole exclusion
+    // mechanism depends on, so a re-run must never leave it wrong.
+    if (!existingProfile.is_system_account) {
+      console.log("is_system_account was false - correcting to true.");
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_system_account: true })
+        .eq("id", existingProfile.id);
+      if (updateError) throw updateError;
     }
     return;
   }
@@ -73,7 +87,7 @@ async function main() {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("id, nom, email, role")
+    .select("id, nom, email, role, is_system_account")
     .eq("id", created.user.id)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -90,7 +104,16 @@ async function main() {
     if (updateError) throw updateError;
   }
 
-  console.log(`qa-bot profile ready: ${testEmail} (id: ${profile.id}, role: internal)`);
+  // Set at creation time, not just patched after the fact by the 0023
+  // migration's one-time UPDATE - so re-running this script (e.g. on a
+  // fresh project) is correct on its own without depending on that
+  // migration ever having targeted this specific email.
+  if (!profile.is_system_account) {
+    const { error: updateError } = await supabaseAdmin.from("profiles").update({ is_system_account: true }).eq("id", profile.id);
+    if (updateError) throw updateError;
+  }
+
+  console.log(`qa-bot profile ready: ${testEmail} (id: ${profile.id}, role: internal, is_system_account: true)`);
 }
 
 main().catch((err) => {

@@ -33,6 +33,10 @@ export interface Profile {
   email: string;
   role: "admin" | "internal" | "client";
   created_at: string;
+  // Added by 0023_add_profiles_is_system_account.sql - true for non-human
+  // accounts (e.g. qa-bot, Playwright e2e testing). Must be excluded from
+  // every rep-selection UI regardless of role or deal assignments.
+  is_system_account: boolean;
 }
 
 export interface PipelineStage {
