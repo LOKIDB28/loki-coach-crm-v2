@@ -386,6 +386,29 @@ function DashboardPageInner() {
     return counts;
   }, [visibleDeals]);
 
+  // Owner ids with at least one non-archived deal - deliberately from the
+  // full `deals` list, not `visibleDeals`, so this stays the same set
+  // regardless of the "Afficher les archives" toggle. Drives which rep
+  // tabs even appear (see repTabProfiles below), not just their counts.
+  const activeDealOwnerIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const d of deals) {
+      if (!d.archived && d.owner_id) ids.add(d.owner_id);
+    }
+    return ids;
+  }, [deals]);
+
+  // Rep filter tabs show only role="internal" profiles with at least one
+  // active deal - no hardcoded name list, so this stays correct on its own
+  // as assignments change (e.g. Marie-Pierre reappears the day she's
+  // assigned a deal; qa-bot or an admin can never appear). Scoped to this
+  // one prop only - RecapTable/CalendarView/the DealDrawer referral picker
+  // etc. still see the full, unfiltered `profiles`.
+  const repTabProfiles = useMemo(
+    () => profiles.filter((p) => p.role === "internal" && activeDealOwnerIds.has(p.id)),
+    [profiles, activeDealOwnerIds]
+  );
+
   // NOTE (known limitation, kept as-is on purpose): duplicate detection runs
   // against ALL visibleDeals regardless of which reps are selected below -
   // it is NOT scoped to only cross-match between the currently selected
@@ -680,7 +703,7 @@ function DashboardPageInner() {
         )}
 
         <RepresentativeTabs
-          profiles={profiles}
+          profiles={repTabProfiles}
           counts={ownerCounts}
           totalCount={visibleDeals.length}
           activeOwnerIds={activeOwnerIds}
