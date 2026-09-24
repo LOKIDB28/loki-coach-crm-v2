@@ -70,7 +70,11 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
           } else if (metric === "valeur_brute") {
             row[rep.label] = repDeals.reduce((sum, d) => sum + Number(d.montant ?? 0), 0);
           } else {
-            row[rep.label] = repDeals.reduce((sum, d) => sum + Number(d.montant ?? 0) * (stage.probability / 100), 0);
+            // pipeline_stages.probability is stored as a fraction (0.05-1.00),
+            // not a 0-100 percentage - confirmed against real data and
+            // against v_forecast_par_rep's own definition (sum(montant *
+            // probability), no /100 either). No division here on purpose.
+            row[rep.label] = repDeals.reduce((sum, d) => sum + Number(d.montant ?? 0) * stage.probability, 0);
           }
         }
         return row;
