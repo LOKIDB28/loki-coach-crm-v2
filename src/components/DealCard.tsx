@@ -54,6 +54,7 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
     <button
       type="button"
       onClick={onOpen}
+      data-testid="deal-card"
       className={`relative text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm ${
         deal.archived ? "opacity-60" : ""
       }`}

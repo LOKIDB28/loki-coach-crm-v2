@@ -20,3 +20,10 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright - storageState.json holds a real qa-bot session (cookies), and
+# the report/results dirs can capture screenshots of real prod data. None
+# of this is ever committed.
+/playwright/.auth/
+/playwright-report/
+/test-results/
