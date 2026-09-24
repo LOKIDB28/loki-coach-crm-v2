@@ -760,11 +760,13 @@ export function DealDrawer({
             <Field label="Représentant">
               <Select value={localDeal.owner_id ?? ""} onChange={(e) => commitDeal({ owner_id: e.target.value || null })}>
                 <option value="">Non assigné</option>
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom || p.email}
-                  </option>
-                ))}
+                {profiles
+                  .filter((p) => !p.is_system_account && p.role !== "admin")
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nom || p.email}
+                    </option>
+                  ))}
               </Select>
             </Field>
           </div>

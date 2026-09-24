@@ -161,7 +161,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
               <Select value={draft.owner_id} onChange={(e) => update("owner_id", e.target.value)}>
                 <option value="">Non assigné</option>
                 {profiles
-                  .filter((p) => !p.is_system_account)
+                  .filter((p) => !p.is_system_account && p.role !== "admin")
                   .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nom || p.email}
