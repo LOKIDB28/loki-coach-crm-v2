@@ -75,31 +75,31 @@ export function CalendarView({ deals, profiles, onOpen }: CalendarViewProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setAnchor((d) => (granularity === "semaine" ? addWeeks(d, -1) : addMonths(d, -1)))}
             aria-label={granularity === "semaine" ? "Semaine précédente" : "Mois précédent"}
-            className="flex items-center justify-center min-w-9 min-h-9 rounded-lg text-textSoft hover:text-teal hover:bg-surface2"
+            className="flex items-center justify-center min-w-9 min-h-9 rounded-[9px] text-textSoft hover:text-teal hover:bg-surface2 transition-colors duration-150"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium text-text px-1 min-w-[150px] text-center">
+          <span className="text-[15px] font-semibold tracking-[-0.01em] text-text px-1.5 min-w-[150px] text-center">
             {granularity === "semaine" ? formatWeekLabel(weekDays) : formatMonthLabel(anchor)}
           </span>
           <button
             type="button"
             onClick={() => setAnchor((d) => (granularity === "semaine" ? addWeeks(d, 1) : addMonths(d, 1)))}
             aria-label={granularity === "semaine" ? "Semaine suivante" : "Mois suivant"}
-            className="flex items-center justify-center min-w-9 min-h-9 rounded-lg text-textSoft hover:text-teal hover:bg-surface2"
+            className="flex items-center justify-center min-w-9 min-h-9 rounded-[9px] text-textSoft hover:text-teal hover:bg-surface2 transition-colors duration-150"
           >
             <ChevronRight size={16} />
           </button>
           <button
             type="button"
             onClick={() => setAnchor(new Date())}
-            className="text-xs font-medium text-teal hover:underline ml-1"
+            className="text-xs font-semibold text-teal px-2 py-1 rounded-lg hover:bg-teal/10 transition-colors duration-150 ml-0.5"
           >
             Aujourd&apos;hui
           </button>

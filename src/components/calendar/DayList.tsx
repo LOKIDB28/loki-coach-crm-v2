@@ -37,9 +37,16 @@ export function DayList({ days, events, repColorFor, onOpen }: DayListProps) {
     <div className="space-y-3">
       {daysWithEvents.map(({ day, label, isToday, dayEvents }) => (
         <div key={day.toISOString()}>
-          <div className={`flex items-baseline gap-1.5 mb-1.5 ${isToday ? "text-teal" : "text-textSoft"}`}>
-            <span className={`text-xs font-medium ${isToday ? "font-semibold" : ""}`}>{label}</span>
-            <span className="text-[11px]">{day.toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            {isToday && (
+              <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-teal text-white text-[10px] font-bold">
+                {day.getDate()}
+              </span>
+            )}
+            <span className={`text-xs font-medium ${isToday ? "text-teal font-semibold" : "text-textSoft"}`}>{label}</span>
+            <span className="text-[11px] text-textSoft">
+              {day.toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}
+            </span>
           </div>
           <div className="space-y-1">
             {dayEvents.map((e) => (

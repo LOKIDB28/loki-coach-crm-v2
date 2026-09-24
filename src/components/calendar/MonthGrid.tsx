@@ -46,14 +46,18 @@ export function MonthGrid({ monthAnchor, days, events, repColorFor, onOpen }: Mo
           return (
             <div
               key={day.toISOString()}
-              className={`min-h-[84px] rounded-lg border border-border/15 p-1 ${inMonth ? "bg-surface" : "bg-surface2/40"}`}
+              className={`min-h-[84px] rounded-[11px] border p-1 ${
+                isToday ? "border-teal/35 bg-teal/[0.04]" : inMonth ? "border-border/15 bg-surface" : "border-border/15 bg-surface2/40"
+              }`}
             >
-              <div
-                className={`text-[11px] text-right pr-0.5 ${
-                  isToday ? "text-teal font-semibold" : inMonth ? "text-textSoft" : "text-textSoft/40"
-                }`}
-              >
-                {day.getDate()}
+              <div className="text-right">
+                {isToday ? (
+                  <span className="inline-flex items-center justify-center w-[19px] h-[19px] rounded-full bg-teal text-white text-[10.5px] font-bold">
+                    {day.getDate()}
+                  </span>
+                ) : (
+                  <span className={`text-[11px] pr-0.5 ${inMonth ? "text-textSoft" : "text-textSoft/40"}`}>{day.getDate()}</span>
+                )}
               </div>
               <div className="space-y-0.5 mt-0.5">
                 {visible.map((e) => (

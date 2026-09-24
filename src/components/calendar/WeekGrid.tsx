@@ -28,10 +28,21 @@ export function WeekGrid({ days, events, repColorFor, onOpen }: WeekGridProps) {
         const isToday = isSameDay(day, today);
 
         return (
-          <div key={day.toISOString()} className="min-h-[160px] rounded-lg border border-border/15 bg-surface p-1.5">
-            <div className={`text-center mb-1.5 ${isToday ? "text-teal" : "text-textSoft"}`}>
-              <div className="text-[10px] font-medium uppercase tracking-wide">{DAY_LABELS[i]}</div>
-              <div className={`text-sm ${isToday ? "font-semibold" : ""}`}>{day.getDate()}</div>
+          <div
+            key={day.toISOString()}
+            className={`min-h-[160px] rounded-[14px] border p-1.5 ${
+              isToday ? "border-teal/35 bg-teal/[0.04]" : "border-border/15 bg-surface"
+            }`}
+          >
+            <div className="text-center mb-1.5">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-textSoft">{DAY_LABELS[i]}</div>
+              {isToday ? (
+                <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal text-white text-sm font-semibold mt-0.5">
+                  {day.getDate()}
+                </div>
+              ) : (
+                <div className="text-sm text-text mt-0.5">{day.getDate()}</div>
+              )}
             </div>
             <div className="space-y-1">
               {dayEvents.length === 0 ? (
