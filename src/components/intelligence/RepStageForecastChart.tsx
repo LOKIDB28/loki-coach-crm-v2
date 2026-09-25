@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { REP_FILTERS } from "@/lib/calendar";
 import { formatCurrency } from "@/lib/format";
+import { dealsForRepAndStage } from "@/lib/report";
 import { CHART_TOOLTIP_STYLE, REP_COLORS } from "@/lib/theme";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
@@ -64,7 +65,10 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
       openStages.map((stage) => {
         const row: Record<string, number | string> = { label: stage.label };
         for (const rep of reps) {
-          const repDeals = deals.filter((d) => d.owner_id === rep.profileId && d.stage_id === stage.id);
+          // Shared with lib/report.ts's stageCountsByRep (/rapports team
+          // report) - one filter definition for "this rep's deals at this
+          // stage" instead of two copies that could drift.
+          const repDeals = dealsForRepAndStage(deals, rep.profileId, stage.id);
           if (metric === "nb_deals") {
             row[rep.label] = repDeals.length;
           } else if (metric === "valeur_brute") {

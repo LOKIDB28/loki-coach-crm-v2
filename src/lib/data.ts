@@ -334,3 +334,22 @@ export async function updateExchangeRate(
   if (error) throw error;
   return data as unknown as ExchangeRateWithAuthor;
 }
+
+// --- Rapport d'équipe (/rapports) -----------------------------------------
+
+/**
+ * Every changement_etape activity's deal_id + created_at, across all deals -
+ * used by lib/report.ts (latestStageEntryByDeal) to derive how long a deal
+ * has sat in its current stage. One bulk query, called only when the team
+ * report is generated (not on page load, not on a timer) - this report is
+ * computed on demand, not a standing widget.
+ */
+export async function fetchStageChangeActivities(
+  supabase: SupabaseClient
+): Promise<{ deal_id: string; created_at: string }[]> {
+  const { data, error } = await supabase.from("activities").select("deal_id, created_at").eq("type", "changement_etape");
+  if (error) throw error;
+  return ((data ?? []) as { deal_id: string | null; created_at: string }[]).filter(
+    (row): row is { deal_id: string; created_at: string } => row.deal_id !== null
+  );
+}

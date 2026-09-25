@@ -110,3 +110,29 @@ button:active {
 .leaflet-tooltip.loki-map-tooltip::before {
   border-top-color: rgb(var(--surface-2));
 }
+
+/*
+ * /rapports "Exporter en PDF" (window.print(), no PDF library) - classic
+ * "print only this element" technique: hide everything, then re-reveal
+ * .report-print and its descendants. visibility (not display) is what
+ * makes the re-reveal of descendants possible at all - a display:none
+ * ancestor can't be un-hidden by a child's own display rule, visibility
+ * can. The generator's period selector and the "Exporter en PDF" button
+ * itself are deliberately NOT inside .report-print (see
+ * ReportGenerator.tsx) so they disappear here for free, no extra class.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .report-print,
+  .report-print * {
+    visibility: visible;
+  }
+  .report-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
