@@ -8,6 +8,7 @@ import {
   BarChart3,
   CalendarDays,
   Download,
+  FileText,
   Kanban,
   LayoutGrid,
   LogOut,
@@ -549,6 +550,16 @@ function DashboardPageInner() {
             >
               <Settings size={14} /> Paramètres
             </Link>
+            {/* Rapport d'équipe - route standalone, distincte de LOKI
+                Intelligence (deux espaces distincts pour le client, pas
+                seulement une question d'accès). Ouvert à tout le monde,
+                aucune restriction de rôle. */}
+            <Link
+              href="/rapports"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+            >
+              <FileText size={14} /> Rapports
+            </Link>
             {/* Deliberately distinct from the other secondary actions - the
                 one destination button we want to pop instead of blend in. */}
             <Link
@@ -560,9 +571,9 @@ function DashboardPageInner() {
             </Link>
 
             {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde
-                JSON, Paramètres, LOKI Intelligence, récap et archives
-                toggles - everything that's a separate row or extra header
-                button on desktop, collapsed to one trigger. */}
+                JSON, Paramètres, Rapports, LOKI Intelligence, récap et
+                archives toggles - everything that's a separate row or extra
+                header button on desktop, collapsed to one trigger. */}
             <div className="relative sm:hidden">
               <button
                 type="button"
@@ -618,6 +629,13 @@ function DashboardPageInner() {
                       className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
                     >
                       <Settings size={16} /> Paramètres
+                    </Link>
+                    <Link
+                      href="/rapports"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                    >
+                      <FileText size={16} /> Rapports
                     </Link>
                     {/* Deliberately distinct from the other rows - same pop as its desktop counterpart. */}
                     <Link
