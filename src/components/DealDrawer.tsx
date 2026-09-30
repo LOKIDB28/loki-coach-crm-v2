@@ -219,6 +219,26 @@ export function DealDrawer({
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
   const [saving, setSaving] = useState(false);
 
+  // Slide-in/out, not an instant pop - matches the same path both ways
+  // (enters from the right, leaves back the same way). `mounted` flips one
+  // frame after first paint so the initial translate-x-full state actually
+  // transitions instead of skipping straight to translate-x-0. `closing`
+  // holds the drawer at translate-x-full while `onClose` is delayed long
+  // enough for that transition to finish, instead of unmounting instantly.
+  const [mounted, setMounted] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const DRAWER_TRANSITION_MS = 380;
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, DRAWER_TRANSITION_MS);
+  }
+
   // Archiver / Marquer gagné / Marquer perdu share one pending-confirmation
   // slot rather than three near-identical boolean flags + banners.
   const [pendingAction, setPendingAction] = useState<"archive" | "gagne" | "perdu" | null>(null);
@@ -418,6 +438,20 @@ export function DealDrawer({
 
   const currentStage = stages.find((s) => s.id === localDeal.stage_id);
 
+  // Brief opacity dip on the stepper's center label when the stage itself
+  // changes (not on every render) - a fade between names instead of a hard
+  // swap. Purely cosmetic: onChangeStage/localDeal are the actual source of
+  // truth, this never delays or blocks anything.
+  const [stageFading, setStageFading] = useState(false);
+  const prevStageIdRef = useRef(localDeal.stage_id);
+  useEffect(() => {
+    if (prevStageIdRef.current === localDeal.stage_id) return;
+    prevStageIdRef.current = localDeal.stage_id;
+    setStageFading(true);
+    const t = setTimeout(() => setStageFading(false), 160);
+    return () => clearTimeout(t);
+  }, [localDeal.stage_id]);
+
   // The stepper's arrows only ever move within the open stages - closing a
   // deal (gagné/perdu) is exclusively done via the two dedicated buttons
   // below, never as a side effect of clicking "next" past the last open
@@ -462,7 +496,7 @@ export function DealDrawer({
     try {
       if (pendingAction === "archive") {
         await onUpdateDeal({ archived: true });
-        onClose();
+        handleClose();
       } else if (pendingAction === "gagne" && gagneStage) {
         await onChangeStage(gagneStage.id);
       } else if (pendingAction === "perdu" && perduStage) {
@@ -488,12 +522,22 @@ export function DealDrawer({
     }
   }
 
+  const drawerVisible = mounted && !closing;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm">
-      <div className="w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto">
+    <div
+      className={`fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm transition-opacity duration-300 ${
+        drawerVisible ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <div
+        className={`w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          drawerVisible ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border/15 px-5 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-text flex items-center gap-2 min-w-0">
+            <h2 className="text-lg font-semibold text-text tracking-[-0.01em] flex items-center gap-2 min-w-0">
               <span className="truncate">{fullName(localContact) || "(sans nom)"}</span>
               {deal.source_import === "pipedrive" && (
                 <span
@@ -505,7 +549,10 @@ export function DealDrawer({
                 </span>
               )}
             </h2>
-            <p className="text-xs text-textSoft">{saving ? "Enregistrement…" : "Enregistré"}</p>
+            <p className="text-xs text-textSoft flex items-center gap-1.5">
+              {!saving && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+              {saving ? "Enregistrement…" : "Enregistré"}
+            </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {deal.archived ? (
@@ -531,7 +578,7 @@ export function DealDrawer({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-text"
               aria-label="Fermer"
             >
@@ -621,36 +668,54 @@ export function DealDrawer({
 
           {/* Stage stepper - open stages only (5). Closing a deal never
               happens via the arrows, only via the two buttons below. */}
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface px-3 py-2.5">
-            <button
-              type="button"
-              disabled={isClosedStage || openIndex <= 0 || prevBlockedByContact}
-              onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
-              className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
-              aria-label="Étape précédente"
-              title={prevBlockedByContact ? "Retour à Prospect impossible - premier contact déjà enregistré" : undefined}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div className="text-center">
-              <div className={`text-xs font-medium ${isClosedStage ? "text-textSoft" : "text-teal"}`}>
-                {currentStage?.label}
-              </div>
-              {!isClosedStage && (
-                <div className="text-[11px] text-textSoft">
-                  Étape {openIndex + 1} / {openStages.length}
+          <div className="rounded-xl border border-border/15 bg-surface px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                disabled={isClosedStage || openIndex <= 0 || prevBlockedByContact}
+                onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
+                className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
+                aria-label="Étape précédente"
+                title={prevBlockedByContact ? "Retour à Prospect impossible - premier contact déjà enregistré" : undefined}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className={`text-center transition-opacity duration-150 ${stageFading ? "opacity-20" : "opacity-100"}`}>
+                <div className={`text-xs font-medium tracking-[-0.005em] ${isClosedStage ? "text-textSoft" : "text-teal"}`}>
+                  {currentStage?.label}
                 </div>
-              )}
+                {!isClosedStage && (
+                  <div className="text-[11px] text-textSoft">
+                    Étape {openIndex + 1} / {openStages.length}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={isClosedStage || openIndex >= openStages.length - 1}
+                onClick={() => onChangeStage(openStages[openIndex + 1]!.id)}
+                className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
+                aria-label="Étape suivante"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
-            <button
-              type="button"
-              disabled={isClosedStage || openIndex >= openStages.length - 1}
-              onClick={() => onChangeStage(openStages[openIndex + 1]!.id)}
-              className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
-              aria-label="Étape suivante"
-            >
-              <ChevronRight size={20} />
-            </button>
+            {/* Same progress already spelled out as "Étape X / Y" above,
+                just also drawn as a bar - previewed and approved alongside
+                the rest of this pass. Purely visual, no new state: reads
+                straight off openIndex/openStages. */}
+            {!isClosedStage && (
+              <div className="flex gap-1 mt-2.5 px-0.5">
+                {openStages.map((s, i) => (
+                  <div
+                    key={s.id}
+                    className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
+                      i <= openIndex ? "bg-teal" : "bg-border/20"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Always-visible, explicit close-out actions - never a side
@@ -682,7 +747,9 @@ export function DealDrawer({
               negotiation notes specifically, clearly relabeled so the two
               are never confused. */}
           <div className="rounded-xl overflow-hidden border border-teal/30">
-            <div className="bg-teal px-4 py-2.5 flex items-center gap-2">
+            <div className="relative bg-teal px-4 py-2.5 flex items-center gap-2">
+              {/* Bright top edge = light catching a material, not flat paint - same idea as the login/calendar pass, nothing structural. */}
+              <div className="absolute inset-x-0 top-0 h-px bg-white/35" />
               <History size={15} className="text-white" />
               <h3 className="text-sm font-semibold text-white">Historique &amp; notes</h3>
             </div>
