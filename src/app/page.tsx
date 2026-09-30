@@ -27,17 +27,20 @@ import {
   createContactAndDeal,
   deleteDealPhoto,
   fetchActivitiesForDeal,
+  fetchAllActivityTimestamps,
   fetchCoaches,
   fetchDealPhotos,
   fetchDeals,
   fetchExportPayload,
   fetchPipelineStages,
   fetchProfiles,
+  fetchStageChangeActivities,
   getSignedPhotoUrls,
   updateContactRow,
   updateDealRow,
   uploadDealPhoto,
 } from "@/lib/data";
+import { latestActivityByDeal, latestStageEntryByDeal } from "@/lib/report";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import { INTELLIGENCE_YELLOW } from "@/lib/theme";
@@ -45,6 +48,8 @@ import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
 import { CalendarView } from "@/components/calendar/CalendarView";
 import { DealCard } from "@/components/DealCard";
 import { DealDrawer } from "@/components/DealDrawer";
+import { DealHoverContent } from "@/components/DealHoverContent";
+import { HoverTooltip } from "@/components/HoverTooltip";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
@@ -99,6 +104,11 @@ function DashboardPageInner() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  // Raw rows, not the derived Maps themselves - the Maps are recomputed via
+  // useMemo below so a re-render doesn't reconstruct them unless deals or
+  // these actually change. Feeds the Pipeline/Kanban card hover tooltip.
+  const [stageChangeActivities, setStageChangeActivities] = useState<{ deal_id: string; created_at: string }[]>([]);
+  const [activityTimestamps, setActivityTimestamps] = useState<{ deal_id: string; created_at: string }[]>([]);
 
   const [activeStage, setActiveStage] = useState<number | null>(null);
   // Multi-select: empty array = "Tous" (no filter, matches the old `null`
@@ -128,16 +138,20 @@ function DashboardPageInner() {
     setLoading(true);
     setError(null);
     try {
-      const [dealRows, profileRows, stageRows, coachRows] = await Promise.all([
+      const [dealRows, profileRows, stageRows, coachRows, stageChangeRows, activityTimestampRows] = await Promise.all([
         fetchDeals(supabase),
         fetchProfiles(supabase),
         fetchPipelineStages(supabase),
         fetchCoaches(supabase),
+        fetchStageChangeActivities(supabase),
+        fetchAllActivityTimestamps(supabase),
       ]);
       setDeals(dealRows);
       setProfiles(profileRows);
       setStages(stageRows);
       setCoaches(coachRows);
+      setStageChangeActivities(stageChangeRows);
+      setActivityTimestamps(activityTimestampRows);
     } catch (err) {
       setError(getErrorMessage(err, "Erreur de chargement."));
     } finally {
@@ -151,6 +165,12 @@ function DashboardPageInner() {
   }, [supabase, loadAll]);
 
   const selectedDeal = useMemo(() => deals.find((d) => d.id === selectedDealId) ?? null, [deals, selectedDealId]);
+
+  const stageEntryByDeal = useMemo(
+    () => latestStageEntryByDeal(deals, stageChangeActivities),
+    [deals, stageChangeActivities]
+  );
+  const lastActivityByDeal = useMemo(() => latestActivityByDeal(activityTimestamps), [activityTimestamps]);
 
   const loadActivities = useCallback(
     async (dealId: string) => {
@@ -850,6 +870,8 @@ function DashboardPageInner() {
                 profileById={profileById}
                 dupeClientIds={dupeClientIds}
                 dupeCoachIds={dupeCoachIds}
+                stageEntryByDeal={stageEntryByDeal}
+                lastActivityByDeal={lastActivityByDeal}
                 onOpen={openDeal}
                 onMoveDeal={handleMoveDealStage}
               />
@@ -874,6 +896,8 @@ function DashboardPageInner() {
                         profileById={profileById}
                         dupeClientIds={dupeClientIds}
                         dupeCoachIds={dupeCoachIds}
+                        stageEntryByDeal={stageEntryByDeal}
+                        lastActivityByDeal={lastActivityByDeal}
                         onOpen={openDeal}
                       />
                     </div>
@@ -893,6 +917,8 @@ function DashboardPageInner() {
                         profileById={profileById}
                         dupeClientIds={dupeClientIds}
                         dupeCoachIds={dupeCoachIds}
+                        stageEntryByDeal={stageEntryByDeal}
+                        lastActivityByDeal={lastActivityByDeal}
                         onOpen={openDeal}
                       />
                     </div>
@@ -906,6 +932,8 @@ function DashboardPageInner() {
                 profileById={profileById}
                 dupeClientIds={dupeClientIds}
                 dupeCoachIds={dupeCoachIds}
+                stageEntryByDeal={stageEntryByDeal}
+                lastActivityByDeal={lastActivityByDeal}
                 onOpen={openDeal}
               />
             )}
@@ -1040,6 +1068,8 @@ function DealGrid({
   profileById,
   dupeClientIds,
   dupeCoachIds,
+  stageEntryByDeal,
+  lastActivityByDeal,
   onOpen,
 }: {
   deals: DealWithContact[];
@@ -1047,20 +1077,28 @@ function DealGrid({
   profileById: Map<string, Profile>;
   dupeClientIds: Set<string>;
   dupeCoachIds: Set<string>;
+  stageEntryByDeal: Map<string, string>;
+  lastActivityByDeal: Map<string, string>;
   onOpen: (id: string) => void;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
       {deals.map((d) => (
-        <DealCard
+        <HoverTooltip
           key={d.id}
-          deal={d}
-          stage={stageById.get(d.stage_id)}
-          ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
-          hasClientDupe={dupeClientIds.has(d.id)}
-          hasCoachDupe={dupeCoachIds.has(d.id)}
-          onOpen={() => onOpen(d.id)}
-        />
+          content={
+            <DealHoverContent deal={d} stageEnteredAt={stageEntryByDeal.get(d.id)} lastActivityAt={lastActivityByDeal.get(d.id)} />
+          }
+        >
+          <DealCard
+            deal={d}
+            stage={stageById.get(d.stage_id)}
+            ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
+            hasClientDupe={dupeClientIds.has(d.id)}
+            hasCoachDupe={dupeCoachIds.has(d.id)}
+            onOpen={() => onOpen(d.id)}
+          />
+        </HoverTooltip>
       ))}
     </div>
   );
