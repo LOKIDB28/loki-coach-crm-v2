@@ -93,6 +93,26 @@ export function latestStageEntryByDeal(
   return result;
 }
 
+/**
+ * Per deal, the created_at of its single most recent activity (any type -
+ * a changement_etape counts as much as a note/call for "last touched").
+ * Unlike latestStageEntryByDeal above, a deal with zero activities is
+ * simply absent from the result rather than falling back to its own
+ * created_at - "never logged anything" and "logged something on day one"
+ * are different facts, and callers (the hover tooltip) need to tell them
+ * apart to show "aucune activité" instead of a fake date.
+ */
+export function latestActivityByDeal(activities: { deal_id: string; created_at: string }[]): Map<string, string> {
+  const latest = new Map<string, string>();
+  for (const row of activities) {
+    const current = latest.get(row.deal_id);
+    if (!current || new Date(row.created_at).getTime() > new Date(current).getTime()) {
+      latest.set(row.deal_id, row.created_at);
+    }
+  }
+  return latest;
+}
+
 /** Deals d'un représentant donné, à une étape donnée - le filtre partagé derrière stageCountsByRep et RepStageForecastChart (nb_deals/valeur_brute/valeur_ponderee y appliquent chacun leur propre agrégat sur le même sous-ensemble). */
 export function dealsForRepAndStage(
   deals: DealWithContact[],

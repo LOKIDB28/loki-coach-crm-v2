@@ -1,6 +1,8 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { DealHoverContent } from "@/components/DealHoverContent";
+import { HoverTooltip } from "@/components/HoverTooltip";
 import { KanbanCard } from "./KanbanCard";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
@@ -10,6 +12,8 @@ interface KanbanColumnProps {
   profileById: Map<string, Profile>;
   dupeClientIds: Set<string>;
   dupeCoachIds: Set<string>;
+  stageEntryByDeal: Map<string, string>;
+  lastActivityByDeal: Map<string, string>;
   onOpen: (id: string) => void;
 }
 
@@ -19,7 +23,16 @@ interface KanbanColumnProps {
  * pass (agreed: validate the drag gesture itself first, harden after) and
  * will feel it - incremental loading is the very next pass, not skipped.
  */
-export function KanbanColumn({ stage, deals, profileById, dupeClientIds, dupeCoachIds, onOpen }: KanbanColumnProps) {
+export function KanbanColumn({
+  stage,
+  deals,
+  profileById,
+  dupeClientIds,
+  dupeCoachIds,
+  stageEntryByDeal,
+  lastActivityByDeal,
+  onOpen,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `stage-${stage.id}`, data: { stageId: stage.id } });
 
   return (
@@ -38,15 +51,25 @@ export function KanbanColumn({ stage, deals, profileById, dupeClientIds, dupeCoa
           <p className="text-xs text-textSoft text-center py-8">Aucun dossier</p>
         ) : (
           deals.map((d) => (
-            <KanbanCard
+            <HoverTooltip
               key={d.id}
-              deal={d}
-              stage={stage}
-              ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
-              hasClientDupe={dupeClientIds.has(d.id)}
-              hasCoachDupe={dupeCoachIds.has(d.id)}
-              onOpen={() => onOpen(d.id)}
-            />
+              content={
+                <DealHoverContent
+                  deal={d}
+                  stageEnteredAt={stageEntryByDeal.get(d.id)}
+                  lastActivityAt={lastActivityByDeal.get(d.id)}
+                />
+              }
+            >
+              <KanbanCard
+                deal={d}
+                stage={stage}
+                ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
+                hasClientDupe={dupeClientIds.has(d.id)}
+                hasCoachDupe={dupeCoachIds.has(d.id)}
+                onOpen={() => onOpen(d.id)}
+              />
+            </HoverTooltip>
           ))
         )}
       </div>

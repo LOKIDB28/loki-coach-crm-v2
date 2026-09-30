@@ -23,6 +23,8 @@ interface KanbanBoardProps {
   profileById: Map<string, Profile>;
   dupeClientIds: Set<string>;
   dupeCoachIds: Set<string>;
+  stageEntryByDeal: Map<string, string>;
+  lastActivityByDeal: Map<string, string>;
   onOpen: (id: string) => void;
   onMoveDeal: (dealId: string, newStageId: number) => void;
 }
@@ -46,6 +48,8 @@ export function KanbanBoard({
   profileById,
   dupeClientIds,
   dupeCoachIds,
+  stageEntryByDeal,
+  lastActivityByDeal,
   onOpen,
   onMoveDeal,
 }: KanbanBoardProps) {
@@ -105,6 +109,8 @@ export function KanbanBoard({
             profileById={profileById}
             dupeClientIds={dupeClientIds}
             dupeCoachIds={dupeCoachIds}
+            stageEntryByDeal={stageEntryByDeal}
+            lastActivityByDeal={lastActivityByDeal}
             onOpen={onOpen}
           />
         ))}

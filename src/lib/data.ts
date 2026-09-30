@@ -353,3 +353,23 @@ export async function fetchStageChangeActivities(
     (row): row is { deal_id: string; created_at: string } => row.deal_id !== null
   );
 }
+
+// --- Bulle au survol (Pipeline/Kanban) ------------------------------------
+
+/**
+ * Every activity's deal_id + created_at, every type included (unlike
+ * fetchStageChangeActivities above, which filters to changement_etape only)
+ * - a stage change IS activity on a file, so it counts toward "when was
+ * this last touched" same as a note/call/etc would. Same 2-column shape,
+ * called once on board load (not on demand like the report) since the
+ * hover tooltip can be triggered by any card at any time.
+ */
+export async function fetchAllActivityTimestamps(
+  supabase: SupabaseClient
+): Promise<{ deal_id: string; created_at: string }[]> {
+  const { data, error } = await supabase.from("activities").select("deal_id, created_at");
+  if (error) throw error;
+  return ((data ?? []) as { deal_id: string | null; created_at: string }[]).filter(
+    (row): row is { deal_id: string; created_at: string } => row.deal_id !== null
+  );
+}
