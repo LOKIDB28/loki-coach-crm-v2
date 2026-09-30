@@ -46,6 +46,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     Sentry.captureMessage("calendar feed misconfigured: missing Supabase env vars", "error");
+    // A serverless function can freeze as soon as the response is sent,
+    // before the async send to Sentry completes - flush forces the wait.
+    await Sentry.flush(2000);
     return new Response("Server misconfigured", { status: 500 });
   }
 
@@ -65,6 +68,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     Sentry.captureException(new Error("calendar feed lookup failed"), {
       tags: { postgrestErrorCode: error.code },
     });
+    await Sentry.flush(2000);
     return new Response("Server error", { status: 500 });
   }
 
