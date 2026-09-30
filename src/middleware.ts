@@ -49,10 +49,7 @@ export async function middleware(request: NextRequest) {
     // The .ics calendar feed has no session to check - Outlook can't log
     // in. The token in the URL is the sole credential (see
     // get_calendar_feed() in migration 0014), not a Supabase session.
-    pathname.startsWith("/api/calendar") ||
-    // TEMPORARY - see src/app/api/sentry-test-error/route.ts, both removed
-    // together before merge.
-    pathname.startsWith("/api/sentry-test-error");
+    pathname.startsWith("/api/calendar");
 
   if (!isAuthed && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
