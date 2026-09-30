@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { fullName } from "@/lib/domain";
 import { formatCurrency } from "@/lib/format";
@@ -44,6 +45,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
+    Sentry.captureMessage("calendar feed misconfigured: missing Supabase env vars", "error");
+    // A serverless function can freeze as soon as the response is sent,
+    // before the async send to Sentry completes - flush forces the wait.
+    await Sentry.flush(2000);
     return new Response("Server misconfigured", { status: 500 });
   }
 
@@ -51,9 +56,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const { data, error } = await supabase.rpc("get_calendar_feed", { p_token: token });
 
   if (error) {
-    // Never include the token (or the raw error, which could echo it back)
-    // in what gets logged or returned.
+    // Reported to Sentry rather than thrown - this route returns a Response
+    // either way, so nothing here ever reaches Next.js's own error handling
+    // (which is what onRequestError in instrumentation.ts covers). Kept
+    // generic exactly like the console.error below: the RPC error's message
+    // could echo the token back (e.g. an invalid-input error quoting its
+    // argument), so only the standardized Postgrest error code goes along -
+    // beforeSend also scrubs the request URL as a second layer, see
+    // src/lib/sentry-scrub.ts.
     console.error("calendar feed lookup failed");
+    Sentry.captureException(new Error("calendar feed lookup failed"), {
+      tags: { postgrestErrorCode: error.code },
+    });
+    await Sentry.flush(2000);
     return new Response("Server error", { status: 500 });
   }
 
