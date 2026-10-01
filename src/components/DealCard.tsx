@@ -3,7 +3,7 @@
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
 import { daysOverdue, daysSince, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
-import { IMPORT_BADGE_COLOR, LEAD_AGE_COLORS } from "@/lib/theme";
+import { LEAD_AGE_COLORS } from "@/lib/theme";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
 interface DealCardProps {
@@ -59,18 +59,15 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
         deal.archived ? "opacity-60" : ""
       }`}
     >
-      {/* Provenance badge, not a status/interaction indicator - anchored to
-          the card's actual corner (half-overlapping the border) rather than
-          competing with the name/montant/stage cluster inside the padding. */}
-      {deal.source_import === "pipedrive" && (
-        <span
-          className="absolute -top-2 -left-2 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold text-white shadow-sm z-10"
-          style={{ backgroundColor: IMPORT_BADGE_COLOR }}
-          title="Importé de Pipedrive"
-        >
-          P
-        </span>
-      )}
+      {/* The Pipedrive provenance badge (deal.source_import === "pipedrive")
+          is intentionally NOT rendered on this card anymore, by explicit
+          request - visual only. deal.source_import itself is untouched:
+          still set by the original import, still a real DB column
+          (0012_add_source_import.sql), still typed on Deal (lib/types.ts),
+          and still rendered as the same violet "P" badge in DealDrawer.tsx.
+          Its absence here is not evidence the field is unused - don't
+          re-add this badge under the assumption the data is gone, and don't
+          delete/stop reading source_import based on this file alone. */}
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
