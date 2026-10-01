@@ -55,8 +55,8 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
       type="button"
       onClick={onOpen}
       data-testid="deal-card"
-      className={`relative text-left w-full bg-surface border border-border/15 rounded-xl p-4 hover:border-teal/40 transition-colors flex flex-col gap-2.5 shadow-sm ${
-        deal.archived ? "opacity-60" : ""
+      className={`relative text-left w-full bg-surface border border-border/15 rounded-xl p-4 flex flex-col gap-2.5 shadow-sm hover:border-teal/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/25 transition-[border-color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        deal.archived ? "opacity-60" : "hover:-translate-y-[3px] hover:shadow-md"
       }`}
     >
       {/* The Pipedrive provenance badge (deal.source_import === "pipedrive")
@@ -71,12 +71,12 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-base font-medium leading-tight text-text truncate">{name}</div>
+          <div className="text-base font-medium leading-tight text-text tracking-[-0.004em] truncate">{name}</div>
           <div className="text-xs text-textSoft capitalize truncate">{contact.type_contact}</div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0 max-w-[45%]">
           {deal.montant !== null && deal.montant !== undefined && (
-            <span className="text-lg font-bold text-text truncate max-w-full">{formatCurrency(deal.montant)}</span>
+            <span className="text-lg font-bold text-text tabular-nums truncate max-w-full">{formatCurrency(deal.montant)}</span>
           )}
           <span
             className={`text-[11px] font-medium rounded-full px-2.5 py-1 truncate max-w-full transition-colors duration-150 ${stageBadgeClass}`}
