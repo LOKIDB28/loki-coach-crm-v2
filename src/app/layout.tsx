@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LOKI Coach — CRM",
+  title: "LOKI CRM",
   description: "Suivi des ventes et du service pour motocoachs de luxe Prévost.",
   appleWebApp: {
     // "default" status bar style + our onyx header reads fine;
@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     title: "LOKI Coach",
   },
   icons: {
+    icon: "/favicon.png",
     apple: "/apple-touch-icon.png",
   },
   other: {
