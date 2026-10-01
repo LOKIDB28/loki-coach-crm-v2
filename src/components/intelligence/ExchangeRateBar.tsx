@@ -60,7 +60,7 @@ export function ExchangeRateBar({ rate, onUpdate }: ExchangeRateBarProps) {
             min="0"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="w-24 rounded-md bg-surface2 border border-border/20 px-2 py-1 text-xs text-text focus:outline-none focus:border-teal"
+            className="w-24 rounded-md bg-surface2 border border-border/20 px-2 py-1 text-xs text-text focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/20"
           />
           <span>CAD</span>
           <button

@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { ForecastByRepRow } from "@/lib/types";
 
@@ -31,25 +32,28 @@ export function ForecastCard({ rows, totalDeals, dealsWithMontant, currency, usd
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
-        Basé sur {dealsWithMontant} deal{dealsWithMontant > 1 ? "s" : ""} sur {totalDeals} ayant un montant
-        enregistré ({pct}%).{" "}
-        {rows.length <= 1 &&
-          "Aucun deal n'est encore assigné à un représentant — pas de répartition par personne possible pour l'instant."}
+      <div className="flex items-start gap-2 rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
+        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+        <span>
+          Basé sur {dealsWithMontant} deal{dealsWithMontant > 1 ? "s" : ""} sur {totalDeals} ayant un montant
+          enregistré ({pct}%).{" "}
+          {rows.length <= 1 &&
+            "Aucun deal n'est encore assigné à un représentant — pas de répartition par personne possible pour l'instant."}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-border/15 bg-surface p-4">
           <div className="text-xs text-textSoft mb-1">Valeur brute</div>
-          <div className="text-xl font-bold text-text">{formatCurrency(totals.valeur_brute, currency, usdToCad)}</div>
+          <div className="text-xl font-bold text-text tabular-nums">{formatCurrency(totals.valeur_brute, currency, usdToCad)}</div>
         </div>
         <div className="rounded-xl border border-border/15 bg-surface p-4">
           <div className="text-xs text-textSoft mb-1">Valeur pondérée</div>
-          <div className="text-xl font-bold text-teal">{formatCurrency(totals.valeur_ponderee, currency, usdToCad)}</div>
+          <div className="text-xl font-bold text-teal tabular-nums">{formatCurrency(totals.valeur_ponderee, currency, usdToCad)}</div>
         </div>
         <div className="rounded-xl border border-border/15 bg-surface p-4 col-span-2 sm:col-span-1">
           <div className="text-xs text-textSoft mb-1">Deals ouverts</div>
-          <div className="text-xl font-bold text-text">{totals.nb_deals}</div>
+          <div className="text-xl font-bold text-text tabular-nums">{totals.nb_deals}</div>
         </div>
       </div>
 

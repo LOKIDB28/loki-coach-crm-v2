@@ -112,7 +112,7 @@ export default function IntelligencePage() {
             >
               <ArrowLeft size={18} />
             </Link>
-            <h1 className="text-lg font-semibold text-text">LOKI Intelligence</h1>
+            <h1 className="text-lg font-semibold text-text tracking-[-0.01em]">LOKI Intelligence</h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -152,7 +152,7 @@ export default function IntelligencePage() {
                 une seule fois, à son étape actuelle seulement — ce n&apos;est pas un cumul historique de tous les
                 deals qui sont déjà passés par cette étape.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Funnel du pipeline</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Funnel du pipeline</h2>
               <p className="text-xs text-textSoft mb-4">Nombre de deals par étape.</p>
               <PipelineFunnelChart stages={stages} counts={stageCounts} />
             </section>
@@ -164,7 +164,7 @@ export default function IntelligencePage() {
                 géocodable) : deux orthographes différentes du même endroit (« Qc » et « Québec ») compteront comme
                 deux groupes distincts.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Contacts par province / état</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Contacts par province / état</h2>
               <p className="text-xs text-textSoft mb-4">
                 Basé sur le champ province/état des contacts (ville n&apos;est pas géocodable - texte libre par région).
               </p>
@@ -178,7 +178,7 @@ export default function IntelligencePage() {
                 une échelle absolue : un point deux fois plus gros représente environ deux fois plus de contacts, pas
                 un seuil fixe.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Carte des contacts par province/état</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Carte des contacts par province/état</h2>
               <p className="text-xs text-textSoft mb-4">
                 Un point par région (jamais par ville - texte libre non géocodable), taille proportionnelle au nombre
                 de contacts.
@@ -193,7 +193,7 @@ export default function IntelligencePage() {
                 d&apos;une visite à l&apos;autre si la liste des sources présentes change, ce n&apos;est pas un code
                 couleur fixe à mémoriser.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Répartition par source</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Répartition par source</h2>
               <p className="text-xs text-textSoft mb-4">Nombre de deals par source d&apos;acquisition.</p>
               <SourceBreakdownChart data={sources} />
             </section>
@@ -205,7 +205,7 @@ export default function IntelligencePage() {
                 valeur brute ignore la probabilité — c&apos;est la somme des montants tels quels. Les deux restent
                 des estimations sur des deals en cours, pas des revenus réels.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Forecast pondéré</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Forecast pondéré</h2>
               <p className="text-xs text-textSoft mb-4">Montant × probabilité de l&apos;étape, étapes ouvertes seulement.</p>
               <ForecastCard
                 rows={forecast}
@@ -223,7 +223,7 @@ export default function IntelligencePage() {
                 deal dans le pipeline d&apos;un vendeur précis — pas pour comparer leur performance globale : un
                 vendeur avec plus de deals à un stade avancé aura naturellement des barres plus hautes.
               </WidgetInfoTooltip>
-              <h2 className="text-sm font-semibold text-text mb-1">Forecast par vendeur et par étape</h2>
+              <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Forecast par vendeur et par étape</h2>
               <p className="text-xs text-textSoft mb-4">
                 Version détaillée du forecast pondéré ci-dessus, par représentant et par étape ouverte.
               </p>

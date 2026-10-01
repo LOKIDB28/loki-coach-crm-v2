@@ -69,6 +69,22 @@ button:active {
   transform: scale(0.97);
 }
 
+/* WidgetInfoTooltip (LOKI Intelligence) - the popover scales/fades in from
+   the "*" trigger that opened it (transform-origin set at the call site)
+   instead of an instant show/hide, same "anchor to the source" treatment
+   used elsewhere in this pass. The reduced-motion rule below already
+   covers animation-duration generally, so no separate override needed. */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   button:active {
     transform: none;
