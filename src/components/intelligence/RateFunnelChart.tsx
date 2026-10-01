@@ -29,7 +29,7 @@ export function RateFunnelChart({ deals, totalDeals }: RateFunnelChartProps) {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-text mb-1">Funnel par taux</h2>
+      <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">Funnel par taux</h2>
       <p className="text-xs text-textSoft mb-4">
         Deuxième lecture de la maturité des deals, plus fine que les 5 étapes du pipeline.
       </p>

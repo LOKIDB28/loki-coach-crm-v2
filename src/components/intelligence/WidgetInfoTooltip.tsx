@@ -56,7 +56,7 @@ export function WidgetInfoTooltip({ children }: WidgetInfoTooltipProps) {
         *
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-72 max-w-[80vw] rounded-lg border border-border/15 bg-surface shadow-lg p-3 text-xs text-textSoft leading-relaxed z-[1600]">
+        <div className="absolute right-0 mt-1 w-72 max-w-[80vw] origin-top-right [animation:popIn_180ms_cubic-bezier(0.32,0.72,0,1)] rounded-lg border border-border/15 bg-surface shadow-lg p-3 text-xs text-textSoft leading-relaxed z-[1600]">
           {children}
         </div>
       )}

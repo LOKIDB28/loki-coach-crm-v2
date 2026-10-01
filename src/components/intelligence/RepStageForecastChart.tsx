@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { REP_FILTERS } from "@/lib/calendar";
 import { formatCurrency } from "@/lib/format";
@@ -90,9 +91,12 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
-        Deals ouverts uniquement — ce ne sont pas des ventes conclues. Aucune vente gagnée n&apos;est encore
-        enregistrée dans le système.
+      <div className="flex items-start gap-2 rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
+        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+        <span>
+          Deals ouverts uniquement — ce ne sont pas des ventes conclues. Aucune vente gagnée n&apos;est encore
+          enregistrée dans le système.
+        </span>
       </div>
 
       <div className="flex items-center gap-1 rounded-lg border border-border/20 p-0.5 w-fit">
@@ -135,7 +139,7 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
               {...CHART_TOOLTIP_STYLE}
               formatter={(value: unknown) => (isCurrency ? formatCurrency(value as number, currency, usdToCad) : (value as number))}
             />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
             {reps.map((rep) => (
               <Bar key={rep.label} dataKey={rep.label} fill={REP_COLOR_BY_LABEL[rep.label]} radius={[4, 4, 0, 0]} />
             ))}

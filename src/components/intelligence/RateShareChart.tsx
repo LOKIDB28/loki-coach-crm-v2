@@ -45,7 +45,7 @@ export function RateShareChart({ title, description, deals, totalDeals, scaleToS
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-text mb-1">{title}</h2>
+      <h2 className="text-sm font-semibold text-text tracking-[-0.006em] mb-1">{title}</h2>
       <p className="text-xs text-textSoft mb-4">{description}</p>
 
       {data.length === 0 ? (
@@ -80,6 +80,7 @@ export function RateShareChart({ title, description, deals, totalDeals, scaleToS
                 collision risk, regardless of how many thin slices there are. */}
             <Legend
               wrapperStyle={{ fontSize: 12 }}
+              iconType="circle"
               formatter={(value, entry) => {
                 const count = (entry?.payload as unknown as { count: number } | undefined)?.count ?? 0;
                 const pct = shown > 0 ? Math.round((count / shown) * 100) : 0;
