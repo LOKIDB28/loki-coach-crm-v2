@@ -5,6 +5,7 @@ import type {
   Coach,
   Contact,
   Deal,
+  DealDocument,
   DealPhoto,
   DealWithContact,
   ExchangeRateWithAuthor,
@@ -302,6 +303,123 @@ export async function getSignedPhotoUrls(
     if (row.path && row.signedUrl) urls[row.path] = row.signedUrl;
   }
   return urls;
+}
+
+// --- Deal documents (contracts, "Fermé-gagné") -----------------------------
+// See supabase/migrations/0025_create_deal_documents.sql for the private
+// bucket + RLS + auto-logged activity this all depends on. Same shape as
+// trade-in photos above, with one deliberate difference: no eager batch
+// signed-URL fetch. A document has no inline thumbnail to render, so there's
+// nothing to sign until the user actually opens one - getSignedDocumentUrl
+// below is called one at a time, on click.
+
+const DEAL_DOCUMENTS_BUCKET = "deal-documents";
+
+export async function fetchDealDocuments(supabase: SupabaseClient, dealId: string): Promise<DealDocument[]> {
+  const { data, error } = await supabase
+    .from("deal_documents")
+    .select("*")
+    .eq("deal_id", dealId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as DealDocument[];
+}
+
+// Storage extension comes from this, never from the caller-supplied
+// file.name - a renamed file (e.g. "invoice.exe" saved as "invoice.pdf")
+// would otherwise land in the bucket under whatever extension the user
+// typed, independent of what the bytes/declared MIME type actually are.
+// Deliberately stricter than TradeInPhotos' HEIC fallback-by-extension:
+// that fallback exists because HEIC's MIME reporting is genuinely
+// unreliable in some browsers, which doesn't apply to PDF/JPEG/PNG - so
+// there's no matching leniency here, and DealDocuments.tsx's own
+// isAcceptedFile only accepts a file whose file.type is already one of
+// these three keys.
+const DOCUMENT_MIME_EXTENSIONS: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+
+/**
+ * Uploads one file to the private bucket, then records it. The storage path
+ * is opaque (random id, never the original filename) - same reasoning as
+ * uploadDealPhoto: the deal id prefix is for organization only, not an
+ * access boundary. `originalName` is taken as a separate parameter (already
+ * sanitized/length-capped by the caller - see DealDocuments.tsx) rather than
+ * read off `file.name` directly, so this function never has to re-derive
+ * the sanitization rule itself.
+ */
+export async function uploadDealDocument(
+  supabase: SupabaseClient,
+  dealId: string,
+  file: File,
+  originalName: string,
+  createdBy: string | null
+): Promise<DealDocument> {
+  const ext = DOCUMENT_MIME_EXTENSIONS[file.type];
+  if (!ext) {
+    throw new Error(`Type de fichier non pris en charge : ${file.type || "inconnu"}.`);
+  }
+  const storagePath = `${dealId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENTS_BUCKET).upload(storagePath, file);
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from("deal_documents")
+    .insert({
+      deal_id: dealId,
+      storage_path: storagePath,
+      original_name: originalName,
+      mime_type: file.type,
+      size_bytes: file.size,
+      created_by: createdBy,
+    })
+    .select("*")
+    .single();
+  if (error) {
+    // The row insert can fail for reasons unrelated to the bytes themselves
+    // (the 10-document cap trigger, a network blip, RLS) - without this,
+    // the object above would stay in storage forever with no row pointing
+    // at it. Best-effort only: Storage and Postgres are separate systems,
+    // there's no real transaction spanning both, so this cleanup call can
+    // itself fail - logged, not re-thrown, so the caller still sees the
+    // original (and more actionable) insert error rather than this one.
+    const { error: cleanupError } = await supabase.storage.from(DEAL_DOCUMENTS_BUCKET).remove([storagePath]);
+    if (cleanupError) {
+      console.error("Orphaned storage object left behind after a failed deal_documents insert:", storagePath, cleanupError);
+    }
+    throw error;
+  }
+  return data as DealDocument;
+}
+
+/** Removes the storage object first, then its row - so a failed row delete never leaves a dangling reference to bytes that no longer exist. */
+export async function deleteDealDocument(supabase: SupabaseClient, document: DealDocument): Promise<void> {
+  const { error: storageError } = await supabase.storage.from(DEAL_DOCUMENTS_BUCKET).remove([document.storage_path]);
+  if (storageError) throw storageError;
+
+  const { error } = await supabase.from("deal_documents").delete().eq("id", document.id);
+  if (error) throw error;
+}
+
+/**
+ * Single signed URL, requested only when a document is actually opened -
+ * see the file header above for why this isn't a batch like
+ * getSignedPhotoUrls. 1h default expiry, same bound-exposure reasoning as
+ * trade-in photos.
+ */
+export async function getSignedDocumentUrl(
+  supabase: SupabaseClient,
+  storagePath: string,
+  expiresInSeconds = 3600
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(DEAL_DOCUMENTS_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 // --- Exchange rate (LOKI Intelligence CAD/USD toggle) ---------------------
