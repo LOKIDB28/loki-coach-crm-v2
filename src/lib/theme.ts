@@ -30,6 +30,19 @@ export const RELANCE_COLORS = {
 } as const;
 
 // Outside the official brand palette, reserved exclusively for the
+// Pipeline/Kanban card hover tooltip's solid background (HoverTooltip.tsx) -
+// a seventh explicit exception. A dark green derived from the brand teal,
+// not teal itself or vert vif: COLORS.teal (#00A660) is only 3.2:1 against
+// white text, below the 4.5:1 WCAG AA minimum for small text; COLORS.green
+// (#A6FA30, vert vif) is reserved for the Gagné badge and the "Enregistré"
+// save-button flash, not for reuse here. #007F49 is 5.1:1 against white
+// (verified via the W3C relative-luminance formula, not just eyeballed) -
+// dark enough to read as "a shade of teal, deliberately deepened" rather
+// than an unrelated color, while actually passing contrast for the small
+// text it holds.
+export const HOVER_TOOLTIP_BG = "#007F49";
+
+// Outside the official brand palette, reserved exclusively for the
 // Pipedrive-import provenance badge ("P") on DealCard/DealDrawer - a third
 // explicit exception (after orange and RELANCE_COLORS above), not a general
 // purple/violet to reuse elsewhere. Applied inline (style={{backgroundColor}})
