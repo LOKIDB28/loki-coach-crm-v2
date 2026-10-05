@@ -77,6 +77,11 @@ interface DealDrawerProps {
   onGetSignedDocumentUrl: (storagePath: string) => Promise<string>;
 }
 
+// Upper bound for echange_entretien_km - a real odometer reading never gets
+// remotely close to this (7 digits), it's just a sanity backstop against a
+// mistyped/pasted value, same spirit as rejecting negatives.
+const MAX_ECHANGE_ENTRETIEN_KM = 9_999_999;
+
 // Local draft state for each pipeline-stage section - fields here are NOT
 // autosaved (unlike the quick contact fields and stage stepper, which
 // still commit immediately). Each section only writes to Supabase when its
@@ -159,7 +164,7 @@ function hasEchangeData(deal: Deal): boolean {
       deal.echange_numero_serie ||
       deal.echange_accidente ||
       deal.echange_entretien_date ||
-      deal.echange_entretien_km !== null ||
+      deal.echange_entretien_km != null ||
       (deal.echange_entretien_travaux && deal.echange_entretien_travaux.length > 0) ||
       deal.echange_entretien_notes
   );
@@ -1110,6 +1115,7 @@ export function DealDrawer({
                           type="number"
                           inputMode="numeric"
                           min={0}
+                          max={MAX_ECHANGE_ENTRETIEN_KM}
                           step={1}
                           value={section1.echange_entretien_km === null ? "" : String(section1.echange_entretien_km)}
                           onChange={(e) => {
@@ -1120,15 +1126,16 @@ export function DealDrawer({
                               setSection1((s) => ({ ...s, echange_entretien_km: null, dirty: true }));
                               return;
                             }
-                            // Rejected outright, not rounded/floored - a
-                            // decimal or negative value is never written to
-                            // state (not relying on the input's own min/step,
-                            // which a browser doesn't actually enforce
-                            // against direct typing/paste); the field just
-                            // doesn't budge from its last valid value until
-                            // an actual positive integer is typed.
+                            // Rejected outright, not rounded/floored/clamped -
+                            // a decimal, a negative, or a value past the cap
+                            // is never written to state (not relying on the
+                            // input's own min/max/step, which a browser
+                            // doesn't actually enforce against direct typing/
+                            // paste); the field just doesn't budge from its
+                            // last valid value until an actual in-range
+                            // positive integer is typed.
                             const n = Number(raw);
-                            if (Number.isInteger(n) && n >= 0) {
+                            if (Number.isInteger(n) && n >= 0 && n <= MAX_ECHANGE_ENTRETIEN_KM) {
                               setSection1((s) => ({ ...s, echange_entretien_km: n, dirty: true }));
                             }
                           }}
