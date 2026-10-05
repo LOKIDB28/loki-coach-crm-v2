@@ -25,6 +25,7 @@ export type ActivityType =
   | "texto"
   | "rencontre"
   | "changement_etape"
+  | "document"
   | "autre";
 
 export interface Profile {
@@ -197,6 +198,28 @@ export interface DealPhoto {
   id: string;
   deal_id: string;
   storage_path: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+/**
+ * A document attached to a deal (contract, PDF - Deal Drawer Section 6,
+ * "Gagné") - see supabase/migrations/0025_create_deal_documents.sql. Same
+ * opaque storage_path pattern as DealPhoto (never a usable URL by itself,
+ * exchanged for a short-lived signed URL on demand via
+ * getSignedDocumentUrl in lib/data.ts - one at a time, requested only when
+ * a document is actually opened, unlike DealPhoto's eager batch signing for
+ * thumbnails). original_name/mime_type/size_bytes exist because, unlike a
+ * photo, a document is identified to the user by its filename, not a
+ * thumbnail.
+ */
+export interface DealDocument {
+  id: string;
+  deal_id: string;
+  storage_path: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
   created_by: string | null;
   created_at: string;
 }

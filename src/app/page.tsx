@@ -25,19 +25,23 @@ import {
   addActivity,
   changeDealStage,
   createContactAndDeal,
+  deleteDealDocument,
   deleteDealPhoto,
   fetchActivitiesForDeal,
   fetchAllActivityTimestamps,
   fetchCoaches,
+  fetchDealDocuments,
   fetchDealPhotos,
   fetchDeals,
   fetchExportPayload,
   fetchPipelineStages,
   fetchProfiles,
   fetchStageChangeActivities,
+  getSignedDocumentUrl,
   getSignedPhotoUrls,
   updateContactRow,
   updateDealRow,
+  uploadDealDocument,
   uploadDealPhoto,
 } from "@/lib/data";
 import { latestActivityByDeal, latestStageEntryByDeal } from "@/lib/report";
@@ -60,6 +64,7 @@ import type {
   Coach,
   Contact,
   Deal,
+  DealDocument,
   DealPhoto,
   DealWithContact,
   NewContact,
@@ -133,6 +138,9 @@ function DashboardPageInner() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<DealDocument[]>([]);
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const [documentError, setDocumentError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -238,10 +246,56 @@ function DashboardPageInner() {
     }
   }
 
+  const loadDocuments = useCallback(
+    async (dealId: string) => {
+      setDocumentError(null);
+      try {
+        const rows = await fetchDealDocuments(supabase, dealId);
+        setDocuments(rows);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [supabase]
+  );
+
+  // Signature is (file, originalName) rather than (files[]) like
+  // handleUploadPhotos - DealDocuments.tsx already sanitizes/validates one
+  // file at a time and awaits each call in sequence itself, so this never
+  // needs to loop.
+  async function handleUploadDocument(file: File, originalName: string) {
+    if (!selectedDeal) return;
+    setDocumentUploading(true);
+    setDocumentError(null);
+    try {
+      const doc = await uploadDealDocument(supabase, selectedDeal.id, file, originalName, userId);
+      setDocuments((prev) => [...prev, doc]);
+    } catch (err) {
+      setDocumentError(getErrorMessage(err, "Erreur lors de l'envoi du document."));
+    } finally {
+      setDocumentUploading(false);
+    }
+  }
+
+  async function handleDeleteDocument(document: DealDocument) {
+    setDocumentError(null);
+    try {
+      await deleteDealDocument(supabase, document);
+      setDocuments((prev) => prev.filter((d) => d.id !== document.id));
+    } catch (err) {
+      setDocumentError(getErrorMessage(err, "Erreur lors de la suppression du document."));
+    }
+  }
+
+  function handleGetSignedDocumentUrl(storagePath: string) {
+    return getSignedDocumentUrl(supabase, storagePath);
+  }
+
   function openDeal(id: string) {
     setSelectedDealId(id);
     loadActivities(id);
     loadPhotos(id);
+    loadDocuments(id);
   }
 
   // Deep link from the .ics calendar feed's event description (?deal=<id>)
@@ -1014,6 +1068,9 @@ function DashboardPageInner() {
           photoUrls={photoUrls}
           photoUploading={photoUploading}
           photoError={photoError}
+          documents={documents}
+          documentUploading={documentUploading}
+          documentError={documentError}
           onClose={() => setSelectedDealId(null)}
           onUpdateContact={handleUpdateSelectedContact}
           onUpdateDeal={handleUpdateSelectedDeal}
@@ -1021,6 +1078,9 @@ function DashboardPageInner() {
           onAddNote={handleAddNote}
           onUploadPhotos={handleUploadPhotos}
           onDeletePhoto={handleDeletePhoto}
+          onUploadDocument={handleUploadDocument}
+          onDeleteDocument={handleDeleteDocument}
+          onGetSignedDocumentUrl={handleGetSignedDocumentUrl}
         />
       )}
     </div>

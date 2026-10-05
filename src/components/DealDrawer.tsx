@@ -20,6 +20,7 @@ import { CurrencyInput } from "./ui/CurrencyInput";
 import { UnitPicker } from "./ui/UnitPicker";
 import { Section } from "./Section";
 import { ActivityFeed } from "./ActivityFeed";
+import { DealDocuments } from "./DealDocuments";
 import { TradeInPhotos } from "./TradeInPhotos";
 import {
   ACCIDENT_OPTIONS,
@@ -35,7 +36,17 @@ import {
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
-import type { ActivityWithAuthor, Coach, Contact, Deal, DealPhoto, DealWithContact, PipelineStage, Profile } from "@/lib/types";
+import type {
+  ActivityWithAuthor,
+  Coach,
+  Contact,
+  Deal,
+  DealDocument,
+  DealPhoto,
+  DealWithContact,
+  PipelineStage,
+  Profile,
+} from "@/lib/types";
 
 interface DealDrawerProps {
   deal: DealWithContact;
@@ -49,6 +60,9 @@ interface DealDrawerProps {
   photoUrls: Record<string, string>;
   photoUploading: boolean;
   photoError: string | null;
+  documents: DealDocument[];
+  documentUploading: boolean;
+  documentError: string | null;
   onClose: () => void;
   onUpdateContact: (patch: Partial<Contact>) => Promise<void>;
   onUpdateDeal: (patch: Partial<Deal>) => Promise<void>;
@@ -56,6 +70,9 @@ interface DealDrawerProps {
   onAddNote: (contenu: string) => Promise<void>;
   onUploadPhotos: (files: File[]) => void;
   onDeletePhoto: (photo: DealPhoto) => void;
+  onUploadDocument: (file: File, originalName: string) => Promise<void>;
+  onDeleteDocument: (document: DealDocument) => void;
+  onGetSignedDocumentUrl: (storagePath: string) => Promise<string>;
 }
 
 // Local draft state for each pipeline-stage section - fields here are NOT
@@ -207,6 +224,9 @@ export function DealDrawer({
   photoUrls,
   photoUploading,
   photoError,
+  documents,
+  documentUploading,
+  documentError,
   onClose,
   onUpdateContact,
   onUpdateDeal,
@@ -214,6 +234,9 @@ export function DealDrawer({
   onAddNote,
   onUploadPhotos,
   onDeletePhoto,
+  onUploadDocument,
+  onDeleteDocument,
+  onGetSignedDocumentUrl,
 }: DealDrawerProps) {
   const [localContact, setLocalContact] = useState(deal.contact);
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
@@ -1233,6 +1256,14 @@ export function DealDrawer({
                 </Field>
               </div>
               <SaveSectionButton dirty={section6.dirty} saving={section6.saving} onClick={saveSection6} />
+              <DealDocuments
+                documents={documents}
+                uploading={documentUploading}
+                error={documentError}
+                onUpload={onUploadDocument}
+                onDelete={onDeleteDocument}
+                onGetSignedUrl={onGetSignedDocumentUrl}
+              />
             </Section>
 
             <Section

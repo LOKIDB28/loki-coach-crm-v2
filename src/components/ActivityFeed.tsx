@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, MessageSquare, Phone, Mail, MessageCircle, Users } from "lucide-react";
+import { ArrowRightLeft, FileText, MessageSquare, Phone, Mail, MessageCircle, Users } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import type { ActivityType, ActivityWithAuthor } from "@/lib/types";
 
@@ -11,6 +11,7 @@ const ACTIVITY_ICONS: Record<ActivityType, typeof MessageSquare> = {
   texto: MessageCircle,
   rencontre: Users,
   changement_etape: ArrowRightLeft,
+  document: FileText,
   autre: MessageSquare,
 };
 
@@ -21,6 +22,7 @@ const ACTIVITY_LABELS: Record<ActivityType, string> = {
   texto: "Texto",
   rencontre: "Rencontre",
   changement_etape: "Changement d'étape",
+  document: "Document",
   autre: "Autre",
 };
 
@@ -42,7 +44,14 @@ export function ActivityFeed({ activities, loading }: ActivityFeedProps) {
   return (
     <ul className="space-y-2">
       {activities.map((a) => {
+        // Defensive against a `type` value this version of the app doesn't
+        // know about yet - the DB's own check constraint is intentionally
+        // wider than this union (see 0025_create_deal_documents.sql, which
+        // merges in whatever historical values already existed rather than
+        // narrowing them away), so a real row can carry a type these two
+        // Records have no entry for.
         const Icon = ACTIVITY_ICONS[a.type] ?? MessageSquare;
+        const label = ACTIVITY_LABELS[a.type] ?? a.type;
         const isStageChange = a.type === "changement_etape";
         return (
           <li
@@ -58,7 +67,7 @@ export function ActivityFeed({ activities, loading }: ActivityFeedProps) {
                 }`}
               >
                 <Icon size={12} />
-                {ACTIVITY_LABELS[a.type]}
+                {label}
               </span>
               <span className="text-[11px] text-textSoft shrink-0">{formatDateTime(a.created_at)}</span>
             </div>
