@@ -104,6 +104,26 @@ export const EVALUATIONS = [
 export const ACCIDENT_OPTIONS = ["Non accidenté", "Accidenté", "Inconnu"] as const;
 
 /**
+ * Fixed checklist for the trade-in vehicle's maintenance history ("Véhicule
+ * en échange" - Section 1, by request from Fred). Deliberately NOT a DB
+ * check constraint - see 0003_extend_deals_for_mvp.sql / echange_entretien
+ * _travaux's own comment in 0027_add_echange_entretien_history.sql, same
+ * "option lists enforced at the app level" convention as every other
+ * option list on this table. The type is derived from this array (not a
+ * separately hand-written union like Accidente/EvaluationClient in
+ * types.ts) so there's exactly one place to add a 6th item later.
+ */
+export const TRAVAUX_ENTRETIEN_OPTIONS = [
+  "Changement d'huile",
+  "Filtre à huile",
+  "Filtre à air",
+  "Freins",
+  "Autre",
+] as const;
+
+export type TravauxEntretien = (typeof TRAVAUX_ENTRETIEN_OPTIONS)[number];
+
+/**
  * Minimal shape the duplicate-detection helpers need. Deliberately
  * camelCase to match the prototype's original field names.
  */

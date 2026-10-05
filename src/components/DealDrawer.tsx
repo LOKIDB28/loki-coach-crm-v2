@@ -33,6 +33,8 @@ import {
   REP_TAB_ORDER,
   SOURCE_SUGGESTIONS,
   stageIcon,
+  TRAVAUX_ENTRETIEN_OPTIONS,
+  type TravauxEntretien,
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
@@ -75,6 +77,11 @@ interface DealDrawerProps {
   onGetSignedDocumentUrl: (storagePath: string) => Promise<string>;
 }
 
+// Upper bound for echange_entretien_km - a real odometer reading never gets
+// remotely close to this (7 digits), it's just a sanity backstop against a
+// mistyped/pasted value, same spirit as rejecting negatives.
+const MAX_ECHANGE_ENTRETIEN_KM = 9_999_999;
+
 // Local draft state for each pipeline-stage section - fields here are NOT
 // autosaved (unlike the quick contact fields and stage stepper, which
 // still commit immediately). Each section only writes to Supabase when its
@@ -110,6 +117,15 @@ interface Section1State {
   echange_km: string;
   echange_accidente: Deal["echange_accidente"];
   echange_numero_serie: string;
+  // Maintenance history (0027_add_echange_entretien_history.sql, by request
+  // from Fred) - date/km stay as their real null-able types (not coerced to
+  // "" like the free-text fields above) so an empty input can be told apart
+  // from "not touched" and sent as null, never as an empty string that the
+  // date/integer columns would reject.
+  echange_entretien_date: string | null;
+  echange_entretien_km: number | null;
+  echange_entretien_travaux: TravauxEntretien[];
+  echange_entretien_notes: string;
   dirty: boolean;
   saving: boolean;
 }
@@ -129,6 +145,10 @@ function section1Defaults(deal: DealWithContact): Section1State {
     echange_km: deal.echange_km ?? "",
     echange_accidente: deal.echange_accidente,
     echange_numero_serie: deal.echange_numero_serie ?? "",
+    echange_entretien_date: deal.echange_entretien_date,
+    echange_entretien_km: deal.echange_entretien_km,
+    echange_entretien_travaux: deal.echange_entretien_travaux ?? [],
+    echange_entretien_notes: deal.echange_entretien_notes ?? "",
     dirty: false,
     saving: false,
   };
@@ -142,7 +162,11 @@ function hasEchangeData(deal: Deal): boolean {
       deal.echange_annee ||
       deal.echange_km ||
       deal.echange_numero_serie ||
-      deal.echange_accidente
+      deal.echange_accidente ||
+      deal.echange_entretien_date ||
+      deal.echange_entretien_km != null ||
+      (deal.echange_entretien_travaux && deal.echange_entretien_travaux.length > 0) ||
+      deal.echange_entretien_notes
   );
 }
 
@@ -360,6 +384,13 @@ export function DealDrawer({
           echange_km: section1.echange_km || null,
           echange_accidente: section1.echange_accidente,
           echange_numero_serie: section1.echange_numero_serie || null,
+          // Already null-able end to end (set directly by the date/number
+          // inputs below, never coerced through an empty string) - no ||
+          // null needed here, unlike the free-text fields above.
+          echange_entretien_date: section1.echange_entretien_date,
+          echange_entretien_km: section1.echange_entretien_km,
+          echange_entretien_travaux: section1.echange_entretien_travaux,
+          echange_entretien_notes: section1.echange_entretien_notes || null,
         }),
       ]);
       setSection1((s) => ({ ...s, saving: false, dirty: false }));
@@ -1052,6 +1083,104 @@ export function DealDrawer({
                       onChange={(e) => setSection1((s) => ({ ...s, echange_numero_serie: e.target.value, dirty: true }))}
                     />
                   </Field>
+
+                  {/* Maintenance history (0027_add_echange_entretien_history.sql,
+                      by request from Fred) - visually set apart (dashed teal
+                      border) since this block is already dense. All 4 fields
+                      stay in section1's draft state exactly like the rest of
+                      this block: unchecking "Véhicule en échange ?" only hides
+                      this (showEchange, local UI state), it never clears
+                      section1 itself - same as every other echange_* field
+                      here, nothing new introduced for these four. */}
+                  <div className="rounded-lg border border-dashed border-teal/35 bg-teal/[0.04] p-3 space-y-3">
+                    <p className="text-xs font-medium text-teal">Historique d&apos;entretien</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Date du dernier entretien">
+                        <TextInput
+                          type="date"
+                          value={section1.echange_entretien_date ?? ""}
+                          onChange={(e) =>
+                            setSection1((s) => ({
+                              ...s,
+                              // Empty input -> null, never "" - the column is
+                              // `date`, which rejects an empty string outright.
+                              echange_entretien_date: e.target.value || null,
+                              dirty: true,
+                            }))
+                          }
+                        />
+                      </Field>
+                      <Field label="Kilométrage à cet entretien">
+                        <TextInput
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={MAX_ECHANGE_ENTRETIEN_KM}
+                          step={1}
+                          value={section1.echange_entretien_km === null ? "" : String(section1.echange_entretien_km)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw.trim() === "") {
+                              // Empty input -> null, never "" - the column is
+                              // `integer`, which rejects an empty string too.
+                              setSection1((s) => ({ ...s, echange_entretien_km: null, dirty: true }));
+                              return;
+                            }
+                            // Rejected outright, not rounded/floored/clamped -
+                            // a decimal, a negative, or a value past the cap
+                            // is never written to state (not relying on the
+                            // input's own min/max/step, which a browser
+                            // doesn't actually enforce against direct typing/
+                            // paste); the field just doesn't budge from its
+                            // last valid value until an actual in-range
+                            // positive integer is typed.
+                            const n = Number(raw);
+                            if (Number.isInteger(n) && n >= 0 && n <= MAX_ECHANGE_ENTRETIEN_KM) {
+                              setSection1((s) => ({ ...s, echange_entretien_km: n, dirty: true }));
+                            }
+                          }}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Travaux effectués">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {TRAVAUX_ENTRETIEN_OPTIONS.map((travail) => (
+                          <label
+                            key={travail}
+                            className="flex items-center gap-2 min-h-11 px-1 text-sm text-text cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={section1.echange_entretien_travaux.includes(travail)}
+                              onChange={(e) =>
+                                setSection1((s) => ({
+                                  ...s,
+                                  echange_entretien_travaux: e.target.checked
+                                    ? [...s.echange_entretien_travaux, travail]
+                                    : s.echange_entretien_travaux.filter(
+                                        (t: TravauxEntretien) => t !== travail
+                                      ),
+                                  dirty: true,
+                                }))
+                              }
+                              className="accent-teal w-4 h-4 shrink-0"
+                            />
+                            {travail}
+                          </label>
+                        ))}
+                      </div>
+                    </Field>
+                    <Field label="Notes">
+                      <TextArea
+                        value={section1.echange_entretien_notes}
+                        onChange={(e) =>
+                          setSection1((s) => ({ ...s, echange_entretien_notes: e.target.value, dirty: true }))
+                        }
+                        rows={2}
+                      />
+                    </Field>
+                  </div>
+
                   <TradeInPhotos
                     photos={photos}
                     photoUrls={photoUrls}

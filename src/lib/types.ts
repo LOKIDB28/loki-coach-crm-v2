@@ -4,6 +4,8 @@
 // unions below (NiveauInteret, EvaluationClient, Accidente) are enforced by
 // this app only - the 0003 columns have no DB check constraint.
 
+import type { TravauxEntretien } from "./domain";
+
 export type TypeContact = "particulier" | "entreprise" | "concessionnaire";
 
 export type Canal = "direct" | "tmcs";
@@ -161,6 +163,15 @@ export interface Deal {
   // team member (profiles.id) made the referral, set only when
   // contacts.source = "Référence interne" (see DealDrawer Section 1).
   reference_par_profile_id: string | null;
+
+  // Added by 0027_add_echange_entretien_history.sql - trade-in vehicle
+  // maintenance history, by request from Fred. echange_entretien_km is a
+  // real integer (unlike echange_km above, a free-form text odometer
+  // reading) - this is the reading at the specific service being logged.
+  echange_entretien_date: string | null;
+  echange_entretien_km: number | null;
+  echange_entretien_travaux: TravauxEntretien[] | null;
+  echange_entretien_notes: string | null;
 }
 
 export type NewDeal = Partial<Omit<Deal, "id" | "created_at" | "updated_at" | "contact_id">> & {
