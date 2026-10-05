@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -105,8 +106,9 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={status === "sending"}
-                  className="w-full min-h-11 rounded-[11px] bg-teal text-white font-semibold text-[14.5px] hover:bg-teal/90 transition-colors disabled:opacity-60"
+                  className="w-full min-h-11 rounded-[11px] bg-teal text-white font-semibold text-[14.5px] hover:bg-teal/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {status === "sending" && <Spinner size={13} />}
                   {status === "sending" ? "Envoi en cours…" : "Recevoir le lien"}
                 </button>
               </form>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FileText, Printer } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { Spinner } from "../ui/Spinner";
 import { getPeriodRange, STAGNATION_THRESHOLD_DAYS, type PeriodRange, type ReportPeriod, type ReportRow } from "@/lib/report";
 import type { PipelineStage } from "@/lib/types";
 import { PeriodSelector } from "./PeriodSelector";
@@ -86,7 +87,11 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
             onCustomSubmit={() => runReport("custom", customStart, customEnd)}
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {loading && <p className="text-sm text-textSoft">Calcul en cours…</p>}
+          {loading && (
+            <p className="flex items-center gap-2 text-sm text-textSoft">
+              <Spinner /> Chargement…
+            </p>
+          )}
         </div>
       )}
 
@@ -109,41 +114,45 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
               pas encore calculée sur un vrai historique de ventes fermées.
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-textSoft border-b border-border/15">
-                    <th className="py-2 pr-3 font-medium">Représentant</th>
-                    <th className="py-2 pr-3 font-medium">Délai moyen 1er contact</th>
-                    <th className="py-2 pr-3 font-medium">Deals stagnants (≥{STAGNATION_THRESHOLD_DAYS}j)</th>
-                    <th className="py-2 pr-3 font-medium">Relances en retard (période)</th>
-                    <th className="py-2 font-medium">Répartition par étape (actif)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.label} className="border-b border-border/10 last:border-0 align-top">
-                      <td className="py-2.5 pr-3 font-medium text-text">{row.label}</td>
-                      <td className="py-2.5 pr-3 text-text">
-                        {row.avgFirstContactDays !== null
-                          ? `${row.avgFirstContactDays.toFixed(1)} j (${row.firstContactSampleSize} deal${
-                              row.firstContactSampleSize > 1 ? "s" : ""
-                            })`
-                          : "— (aucun deal créé dans la période)"}
-                      </td>
-                      <td className="py-2.5 pr-3 text-text">{row.stagnantCount}</td>
-                      <td className="py-2.5 pr-3 text-text">{row.overdueFollowUpsInPeriod}</td>
-                      <td className="py-2.5 text-textSoft text-xs">
-                        {openStages
-                          .filter((s) => (row.stageCounts[s.id] ?? 0) > 0)
-                          .map((s) => `${s.label}: ${row.stageCounts[s.id]}`)
-                          .join(" · ") || "—"}
-                      </td>
+            {rows.length === 0 ? (
+              <p className="text-sm text-textSoft text-center py-10">Aucune donnée pour cette période.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-textSoft border-b border-border/15">
+                      <th className="py-2 pr-3 font-medium">Représentant</th>
+                      <th className="py-2 pr-3 font-medium">Délai moyen 1er contact</th>
+                      <th className="py-2 pr-3 font-medium">Deals stagnants (≥{STAGNATION_THRESHOLD_DAYS}j)</th>
+                      <th className="py-2 pr-3 font-medium">Relances en retard (période)</th>
+                      <th className="py-2 font-medium">Répartition par étape (actif)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.label} className="border-b border-border/10 last:border-0 align-top">
+                        <td className="py-2.5 pr-3 font-medium text-text">{row.label}</td>
+                        <td className="py-2.5 pr-3 text-text">
+                          {row.avgFirstContactDays !== null
+                            ? `${row.avgFirstContactDays.toFixed(1)} j (${row.firstContactSampleSize} deal${
+                                row.firstContactSampleSize > 1 ? "s" : ""
+                              })`
+                            : "— (aucun deal créé dans la période)"}
+                        </td>
+                        <td className="py-2.5 pr-3 text-text">{row.stagnantCount}</td>
+                        <td className="py-2.5 pr-3 text-text">{row.overdueFollowUpsInPeriod}</td>
+                        <td className="py-2.5 text-textSoft text-xs">
+                          {openStages
+                            .filter((s) => (row.stageCounts[s.id] ?? 0) > 0)
+                            .map((s) => `${s.label}: ${row.stageCounts[s.id]}`)
+                            .join(" · ") || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <button

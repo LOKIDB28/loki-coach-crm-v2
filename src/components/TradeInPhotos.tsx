@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Trash2, X } from "lucide-react";
+import { Spinner } from "./ui/Spinner";
 import type { DealPhoto } from "@/lib/types";
 
 const MAX_PHOTOS = 12;
@@ -92,7 +93,7 @@ export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, o
           disabled={uploading || photos.length >= MAX_PHOTOS}
           className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none"
         >
-          <ImagePlus size={14} />
+          {uploading ? <Spinner size={13} /> : <ImagePlus size={14} />}
           {uploading ? "Envoi…" : "Ajouter des photos"}
         </button>
         <span className="text-[11px] text-textSoft tabular-nums">

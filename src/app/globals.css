@@ -93,6 +93,43 @@ button:active {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+  /* The blanket 0.01ms above still technically "runs" the spin animation
+     (at an imperceptible duration, which some browsers render as a flicker
+     rather than a clean stop) - this instead fully stops it, deliberately
+     leaving the ring itself visible and static rather than removing it, so
+     a reduced-motion user still sees a clear "this is loading" signal. */
+  .spinner {
+    animation: none;
+  }
+}
+
+/*
+ * Global keyboard-focus ring - the same teal halo already used on form
+ * inputs (TextInput/Select/TextArea/CurrencyInput's own focus:ring-2
+ * focus:ring-teal/20) for anything that doesn't already define its own:
+ * buttons, links, checkboxes, segmented-control/pill toggles.
+ *
+ * Deliberately a bare `:focus-visible` selector (specificity 0,1,0)
+ * instead of a utility class added to every call site - any element with
+ * its OWN Tailwind focus/focus-visible ring class compiles to at least a
+ * class+pseudo-class selector (0,2,0), e.g. TextInput's
+ * `.focus\:ring-2:focus` or DealCard's `.focus-visible\:ring-2:focus-
+ * visible` - both always win the cascade over this rule regardless of
+ * source order, so this never stacks a second ring on an element that
+ * already draws one. Only elements with no ring of their own fall through
+ * to this - no exclusion list needed.
+ */
+:focus-visible {
+  /* Not `none` - Windows High Contrast Mode strips box-shadow entirely
+     (it isn't a real border/outline to that mode), so a transparent
+     outline is the only part of this rule it has anything left to
+     repaint; an explicit 2px keeps that repaint the right size. */
+  outline: 2px solid transparent;
+  /* Full opacity, not a tint - measured contrast at this box-shadow
+     width against the two theme surfaces: 6.0:1 on the dark surface,
+     3.0:1 on the light one (were 1.7:1 / 1.5:1 at the previous 0.35
+     alpha - well under anything usable). */
+  box-shadow: 0 0 0 2px rgb(0 166 96); /* teal, see tailwind.config.ts */
 }
 
 /* UnitPicker (numero_unite_libre scroll wheel) - hides the native scrollbar

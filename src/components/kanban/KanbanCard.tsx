@@ -47,7 +47,17 @@ export function KanbanCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`touch-manipulation ${isDragging ? "opacity-30" : ""}`}
+      // After the attributes spread, not before: useDraggable's own
+      // {...attributes} includes tabIndex={0} (for a keyboard-drag flow
+      // that was never wired up - KanbanBoard only configures Mouse/
+      // TouchSensor, no KeyboardSensor), which made this wrapper a second,
+      // functionally dead tab stop sitting right in front of DealCard's
+      // own button - tabbing a Kanban card showed the same focus ring
+      // twice in a row for what looked like one card. -1 here removes it
+      // from the tab order without touching the mouse/touch drag
+      // listeners above, which don't depend on focusability at all.
+      tabIndex={-1}
+      className={`touch-manipulation rounded-xl ${isDragging ? "opacity-30" : ""}`}
     >
       <DealCard
         deal={deal}

@@ -6,6 +6,7 @@ import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
+import { Spinner } from "./ui/Spinner";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS, SOURCE_SUGGESTIONS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import type { Deal, DealWithContact, NewContact, Profile } from "@/lib/types";
@@ -209,8 +210,9 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
             <button
               type="submit"
               disabled={submitting}
-              className="text-xs font-medium px-4 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-60"
+              className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
             >
+              {submitting && <Spinner size={11} />}
               {submitting ? "Création…" : "Créer le client"}
             </button>
           </div>

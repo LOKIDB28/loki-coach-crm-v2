@@ -18,6 +18,7 @@ import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { CurrencyInput } from "./ui/CurrencyInput";
 import { UnitPicker } from "./ui/UnitPicker";
+import { Spinner } from "./ui/Spinner";
 import { Section } from "./Section";
 import { ActivityFeed } from "./ActivityFeed";
 import { DealDocuments } from "./DealDocuments";
@@ -604,7 +605,7 @@ export function DealDrawer({
               )}
             </h2>
             <p className="text-xs text-textSoft flex items-center gap-1.5">
-              {!saving && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+              {saving ? <Spinner size={11} /> : <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
               {saving ? "Enregistrement…" : "Enregistré"}
             </p>
           </div>
@@ -683,8 +684,9 @@ export function DealDrawer({
                   type="button"
                   disabled={actionBusy}
                   onClick={confirmPendingAction}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
                 >
+                  {actionBusy && <Spinner size={11} />}
                   {actionBusy ? "En cours…" : "Confirmer"}
                 </button>
                 <button
@@ -1147,7 +1149,7 @@ export function DealDrawer({
                         {TRAVAUX_ENTRETIEN_OPTIONS.map((travail) => (
                           <label
                             key={travail}
-                            className="flex items-center gap-2 min-h-11 px-1 text-sm text-text cursor-pointer"
+                            className="flex items-center gap-2 min-h-11 px-1 text-xs font-medium text-textSoft"
                           >
                             <input
                               type="checkbox"
@@ -1442,10 +1444,11 @@ function SaveSectionButton({ dirty, saving, onClick }: { dirty: boolean; saving:
         type="button"
         disabled={!dirty || saving}
         onClick={onClick}
-        className={`text-[13px] font-medium px-3.5 py-1.5 rounded-lg transition-all duration-150 disabled:cursor-not-allowed ${
-          justSaved ? "bg-green text-onyx" : "bg-teal text-white hover:bg-teal/90 disabled:opacity-40"
+        className={`flex items-center gap-1.5 text-[13px] font-medium px-3.5 py-1.5 rounded-lg transition-all duration-150 disabled:cursor-not-allowed ${
+          justSaved ? "bg-green text-onyx" : "bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
         }`}
       >
+        {saving && <Spinner size={11} />}
         {label}
       </button>
     </div>

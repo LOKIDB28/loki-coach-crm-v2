@@ -136,7 +136,7 @@ export function UnitPicker({ value, onChange }: UnitPickerProps) {
           hasInteracted.current = true;
         }}
         onKeyDown={handleKeyDown}
-        className="h-full overflow-y-auto no-scrollbar cursor-grab active:cursor-grabbing focus:outline-none"
+        className="h-full overflow-y-auto no-scrollbar cursor-grab active:cursor-grabbing rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/25"
         style={{
           scrollSnapType: "y mandatory",
           WebkitMaskImage: "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",

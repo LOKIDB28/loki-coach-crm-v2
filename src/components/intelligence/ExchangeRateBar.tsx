@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { formatDate, getErrorMessage } from "@/lib/format";
+import { Spinner } from "@/components/ui/Spinner";
 import type { ExchangeRateWithAuthor } from "@/lib/types";
 
 interface ExchangeRateBarProps {
@@ -67,8 +68,9 @@ export function ExchangeRateBar({ rate, onUpdate }: ExchangeRateBarProps) {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="text-teal font-medium hover:underline disabled:opacity-50"
+            className="flex items-center gap-1.5 text-teal font-medium hover:underline disabled:opacity-50"
           >
+            {saving && <Spinner size={11} />}
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
           <button type="button" onClick={cancel} className="hover:underline">

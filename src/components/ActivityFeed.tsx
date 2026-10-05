@@ -2,6 +2,7 @@
 
 import { ArrowRightLeft, FileText, MessageSquare, Phone, Mail, MessageCircle, Users } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
+import { Spinner } from "./ui/Spinner";
 import type { ActivityType, ActivityWithAuthor } from "@/lib/types";
 
 const ACTIVITY_ICONS: Record<ActivityType, typeof MessageSquare> = {
@@ -34,7 +35,11 @@ interface ActivityFeedProps {
 /** Chronological (newest first) history/notes feed for a deal - append-only. */
 export function ActivityFeed({ activities, loading }: ActivityFeedProps) {
   if (loading) {
-    return <p className="text-sm text-textSoft py-2">Chargement de l&apos;historique…</p>;
+    return (
+      <p className="flex items-center gap-2 text-sm text-textSoft py-2">
+        <Spinner /> Chargement…
+      </p>
+    );
   }
 
   if (activities.length === 0) {
