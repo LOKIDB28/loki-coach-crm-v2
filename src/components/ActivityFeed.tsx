@@ -43,7 +43,11 @@ export function ActivityFeed({ activities, loading }: ActivityFeedProps) {
   }
 
   if (activities.length === 0) {
-    return <p className="text-sm text-textSoft py-2">Aucune activité pour ce dossier.</p>;
+    // py-4, not the py-10 used by every other empty state in the app -
+    // deliberate exception: this sits in the drawer's compact "Historique &
+    // notes" panel, right above the "Ajouter une note" field, where py-10
+    // would read as a lot of dead air in an already tight section.
+    return <p className="text-sm text-textSoft py-4">Aucune activité pour ce dossier.</p>;
   }
 
   return (

@@ -115,7 +115,7 @@ export function RepStageForecastChart({ deals, stages, profiles, currency, usdTo
       </div>
 
       {reps.length === 0 ? (
-        <p className="text-sm text-textSoft py-6 text-center">
+        <p className="text-sm text-textSoft py-10 text-center">
           Aucun des représentants Jeff/PM/Fred n&apos;a encore de profil correspondant.
         </p>
       ) : (

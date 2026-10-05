@@ -48,7 +48,7 @@ export function KanbanColumn({
         }`}
       >
         {deals.length === 0 ? (
-          <p className="text-xs text-textSoft text-center py-8">Aucun dossier</p>
+          <p className="text-xs text-textSoft text-center py-10">Aucun dossier</p>
         ) : (
           deals.map((d) => (
             <HoverTooltip
