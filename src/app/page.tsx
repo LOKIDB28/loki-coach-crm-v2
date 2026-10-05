@@ -54,6 +54,7 @@ import { DealCard } from "@/components/DealCard";
 import { DealDrawer } from "@/components/DealDrawer";
 import { DealHoverContent } from "@/components/DealHoverContent";
 import { HoverTooltip } from "@/components/HoverTooltip";
+import { Spinner } from "@/components/ui/Spinner";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
@@ -89,7 +90,11 @@ const SHOW_GROUP_BY_INTEREST = false;
 export default function DashboardPage() {
   return (
     <Suspense
-      fallback={<div className="min-h-screen flex items-center justify-center text-sm text-textSoft">Chargement…</div>}
+      fallback={
+        <div className="min-h-screen flex items-center justify-center gap-2 text-sm text-textSoft">
+          <Spinner /> Chargement…
+        </div>
+      }
     >
       <DashboardPageInner />
     </Suspense>
@@ -916,7 +921,9 @@ function DashboardPageInner() {
             </div>
 
             {loading ? (
-              <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
+              <p className="flex items-center justify-center gap-2 text-sm text-textSoft py-10">
+                <Spinner /> Chargement…
+              </p>
             ) : layout === "kanban" ? (
               <KanbanBoard
                 deals={kanbanDeals}

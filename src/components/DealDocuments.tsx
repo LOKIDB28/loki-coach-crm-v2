@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText, Trash2, Upload } from "lucide-react";
 import { formatDate, getErrorMessage } from "@/lib/format";
+import { Spinner } from "./ui/Spinner";
 import type { DealDocument } from "@/lib/types";
 
 const MAX_DOCUMENTS = 10;
@@ -139,7 +140,7 @@ export function DealDocuments({ documents, uploading, error, onUpload, onDelete,
         disabled={uploading || documents.length >= MAX_DOCUMENTS}
         className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none"
       >
-        <Upload size={14} />
+        {uploading ? <Spinner size={13} /> : <Upload size={14} />}
         {uploading ? "Envoi…" : "Ajouter un document"}
       </button>
 

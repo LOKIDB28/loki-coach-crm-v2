@@ -8,6 +8,7 @@ import { fetchDeals, fetchPipelineStages, fetchProfiles, fetchStageChangeActivit
 import { getErrorMessage } from "@/lib/format";
 import { computeReportRows, latestStageEntryByDeal, type PeriodRange, type ReportRow } from "@/lib/report";
 import { ReportGenerator } from "@/components/rapports/ReportGenerator";
+import { Spinner } from "@/components/ui/Spinner";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 /**
@@ -83,7 +84,9 @@ export default function RapportsPage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
+          <p className="flex items-center justify-center gap-2 text-sm text-textSoft py-10">
+            <Spinner /> Chargement…
+          </p>
         ) : (
           <ReportGenerator openStages={openStages} onGenerate={handleGenerateReport} />
         )}

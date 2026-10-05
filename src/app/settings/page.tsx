@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Copy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -75,7 +76,9 @@ export default function SettingsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-textSoft">Chargement…</p>
+            <p className="flex items-center gap-2 text-sm text-textSoft">
+              <Spinner /> Chargement…
+            </p>
           ) : feedUrl ? (
             <>
               <div className="flex items-center gap-2">

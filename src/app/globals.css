@@ -93,6 +93,35 @@ button:active {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+  /* The blanket 0.01ms above still technically "runs" the spin animation
+     (at an imperceptible duration, which some browsers render as a flicker
+     rather than a clean stop) - this instead fully stops it, deliberately
+     leaving the ring itself visible and static rather than removing it, so
+     a reduced-motion user still sees a clear "this is loading" signal. */
+  .spinner {
+    animation: none;
+  }
+}
+
+/*
+ * Global keyboard-focus ring - the same teal halo already used on form
+ * inputs (TextInput/Select/TextArea/CurrencyInput's own focus:ring-2
+ * focus:ring-teal/20) for anything that doesn't already define its own:
+ * buttons, links, checkboxes, segmented-control/pill toggles.
+ *
+ * Deliberately a bare `:focus-visible` selector (specificity 0,1,0)
+ * instead of a utility class added to every call site - any element with
+ * its OWN Tailwind focus/focus-visible ring class compiles to at least a
+ * class+pseudo-class selector (0,2,0), e.g. TextInput's
+ * `.focus\:ring-2:focus` or DealCard's `.focus-visible\:ring-2:focus-
+ * visible` - both always win the cascade over this rule regardless of
+ * source order, so this never stacks a second ring on an element that
+ * already draws one. Only elements with no ring of their own fall through
+ * to this - no exclusion list needed.
+ */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(0 166 96 / 0.35); /* teal, see tailwind.config.ts */
 }
 
 /* UnitPicker (numero_unite_libre scroll wheel) - hides the native scrollbar

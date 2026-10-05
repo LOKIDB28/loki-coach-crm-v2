@@ -24,6 +24,7 @@ import { RateFunnelChart } from "@/components/intelligence/RateFunnelChart";
 import { RateShareChart } from "@/components/intelligence/RateShareChart";
 import { RepStageForecastChart } from "@/components/intelligence/RepStageForecastChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
+import { Spinner } from "@/components/ui/Spinner";
 import { WidgetInfoTooltip } from "@/components/intelligence/WidgetInfoTooltip";
 import type {
   DealWithContact,
@@ -143,7 +144,9 @@ export default function IntelligencePage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-textSoft py-10 text-center">Chargement…</p>
+          <p className="flex items-center justify-center gap-2 text-sm text-textSoft py-10">
+            <Spinner /> Chargement…
+          </p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <section className="relative bg-surface border border-border/15 rounded-xl p-5">

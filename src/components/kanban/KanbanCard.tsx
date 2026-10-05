@@ -47,7 +47,7 @@ export function KanbanCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`touch-manipulation ${isDragging ? "opacity-30" : ""}`}
+      className={`touch-manipulation rounded-xl ${isDragging ? "opacity-30" : ""}`}
     >
       <DealCard
         deal={deal}

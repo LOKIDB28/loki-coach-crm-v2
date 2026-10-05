@@ -74,7 +74,7 @@ export function PeriodSelector({
             type="button"
             disabled={loading || !customStart || !customEnd}
             onClick={onCustomSubmit}
-            className="text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none"
+            className="text-xs font-medium px-3 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none"
           >
             Calculer
           </button>
