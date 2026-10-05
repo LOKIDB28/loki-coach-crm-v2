@@ -120,8 +120,16 @@ button:active {
  * to this - no exclusion list needed.
  */
 :focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px rgb(0 166 96 / 0.35); /* teal, see tailwind.config.ts */
+  /* Not `none` - Windows High Contrast Mode strips box-shadow entirely
+     (it isn't a real border/outline to that mode), so a transparent
+     outline is the only part of this rule it has anything left to
+     repaint; an explicit 2px keeps that repaint the right size. */
+  outline: 2px solid transparent;
+  /* Full opacity, not a tint - measured contrast at this box-shadow
+     width against the two theme surfaces: 6.0:1 on the dark surface,
+     3.0:1 on the light one (were 1.7:1 / 1.5:1 at the previous 0.35
+     alpha - well under anything usable). */
+  box-shadow: 0 0 0 2px rgb(0 166 96); /* teal, see tailwind.config.ts */
 }
 
 /* UnitPicker (numero_unite_libre scroll wheel) - hides the native scrollbar
