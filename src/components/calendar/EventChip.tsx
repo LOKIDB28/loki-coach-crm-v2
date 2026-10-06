@@ -34,6 +34,7 @@ export function EventChip({ event, color, onOpen }: EventChipProps) {
       className="w-full flex items-center gap-1.5 rounded-lg bg-surface2 border-l-2 px-2 py-1.5 text-left transition-colors duration-150 hover:bg-surface2/70"
       style={{ borderLeftColor: color }}
       title={`${event.label} — ${event.clientName}`}
+      aria-label={`${event.label} — ${event.clientName}`}
     >
       <Icon size={11} className="shrink-0" style={{ color }} />
       <span className="min-w-0 flex-1 truncate text-[11px] text-text">

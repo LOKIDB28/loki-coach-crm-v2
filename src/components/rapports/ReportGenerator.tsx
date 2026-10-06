@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileText, Printer } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Spinner } from "../ui/Spinner";
+import { ErrorBanner } from "../ui/ErrorBanner";
 import { getPeriodRange, STAGNATION_THRESHOLD_DAYS, type PeriodRange, type ReportPeriod, type ReportRow } from "@/lib/report";
 import type { PipelineStage } from "@/lib/types";
 import { PeriodSelector } from "./PeriodSelector";
@@ -86,7 +87,7 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
             onCustomEndChange={setCustomEnd}
             onCustomSubmit={() => runReport("custom", customStart, customEnd)}
           />
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <ErrorBanner message={error} />}
           {loading && (
             <p className="flex items-center gap-2 text-sm text-textSoft">
               <Spinner /> Chargement…

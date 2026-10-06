@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -101,7 +102,7 @@ export default function LoginPage() {
                   />
                 </div>
 
-                {status === "error" && errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
+                {status === "error" && errorMessage && <ErrorBanner message={errorMessage} />}
 
                 <button
                   type="submit"

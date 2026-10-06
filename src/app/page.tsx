@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -55,6 +55,8 @@ import { DealDrawer } from "@/components/DealDrawer";
 import { DealHoverContent } from "@/components/DealHoverContent";
 import { HoverTooltip } from "@/components/HoverTooltip";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { POPOVER_CHROME } from "@/lib/ui";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
 import { PipelineBar } from "@/components/PipelineBar";
@@ -135,6 +137,70 @@ function DashboardPageInner() {
   const [viewLayout, setViewLayout] = useState<ViewLayout>("grid");
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  // Which edge the panel's own edge anchors to - computed each time it
+  // opens (not a fixed "always right-0"), because the trigger isn't
+  // reliably near the screen's right edge (other header content before it
+  // varies with app state) - a fixed right-0 anchor overflowed the left
+  // edge by over 100px in the exact case this was built for (a 320px-wide
+  // phone), measured directly, not assumed. This is the real reason the
+  // old `fixed left-4 right-4 top-20` version avoided anchoring at all;
+  // this keeps the anchor but adds the missing other half of that logic
+  // instead of dropping it.
+  const [mobileMenuAlign, setMobileMenuAlign] = useState<"left" | "right">("right");
+  const MOBILE_MENU_WIDTH_PX = 256; // w-64
+
+  function toggleMobileMenu() {
+    setMobileMenuOpen((wasOpen) => {
+      if (wasOpen) return false;
+      const rect = mobileMenuTriggerRef.current?.getBoundingClientRect();
+      if (rect) {
+        // Picks whichever anchor overflows LESS, not just "does it
+        // overflow at all" - on a narrow phone with the trigger roughly
+        // centered (not flush against either edge), both anchors can
+        // overflow simultaneously (confirmed: at 320px wide with this
+        // trigger's real position, right-anchored overflowed left by
+        // 144px while left-anchored only overflowed right by ~4px - a
+        // boolean-only check would have kept the far worse of the two).
+        // max-w-[calc(100vw-2rem)] still clamps whichever is chosen.
+        const margin = 8;
+        const rightAnchorOverflow = Math.max(0, margin - (rect.right - MOBILE_MENU_WIDTH_PX));
+        const leftAnchorOverflow = Math.max(0, rect.left + MOBILE_MENU_WIDTH_PX - (window.innerWidth - margin));
+        setMobileMenuAlign(leftAnchorOverflow < rightAnchorOverflow ? "left" : "right");
+      }
+      return true;
+    });
+  }
+
+  // Outside click (mousedown, same pattern as WidgetInfoTooltip) and Escape
+  // (window-level, same pattern as DealDrawer/NewDealModal/TradeInPhotos'
+  // lightbox - not a React onKeyDown on the panel itself, so it doesn't
+  // depend on focus being inside it). isComposing ignored for the same
+  // dead-key-accent reason as those three. There's no other layer this menu
+  // could be nested under or need to defer to (opening it is blocked
+  // entirely while the drawer/modal's own full-screen backdrop is up), but
+  // mousedown firing before a native click - never stopped or prevented
+  // here - still guarantees this menu's own close is scheduled before
+  // whatever the same click also lands on (e.g. a deal card behind it)
+  // gets to react, without needing any shared layer flag to enforce it.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !e.isComposing) setMobileMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
   const [newDealOpen, setNewDealOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [activities, setActivities] = useState<ActivityWithAuthor[]>([]);
@@ -653,10 +719,11 @@ function DashboardPageInner() {
                 JSON, Paramètres, Rapports, LOKI Intelligence, récap et
                 archives toggles - everything that's a separate row or extra
                 header button on desktop, collapsed to one trigger. */}
-            <div className="relative sm:hidden">
+            <div ref={mobileMenuRef} className="relative sm:hidden">
               <button
+                ref={mobileMenuTriggerRef}
                 type="button"
-                onClick={() => setMobileMenuOpen((v) => !v)}
+                onClick={toggleMobileMenu}
                 aria-label="Plus d'actions"
                 aria-expanded={mobileMenuOpen}
                 className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
@@ -664,90 +731,91 @@ function DashboardPageInner() {
                 <MoreHorizontal size={18} />
               </button>
               {mobileMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} />
-                  {/* fixed + left/right (not absolute + w-64 anchored to this
-                      small trigger) - guarantees the panel stays inside the
-                      viewport regardless of where the trigger sits in the
-                      header row, instead of a fixed width that can overflow
-                      past the left edge. */}
-                  <div className="fixed left-4 right-4 top-20 rounded-xl border border-border/15 bg-surface shadow-lg z-30 py-1.5 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        loadAll();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      <RefreshCw size={16} /> Rafraîchir
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleExportCsv();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      <Download size={16} /> Exporter (Excel)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleExport();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      Sauvegarde complète (JSON)
-                    </button>
-                    <Link
-                      href="/settings"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      <Settings size={16} /> Paramètres
-                    </Link>
-                    <Link
-                      href="/rapports"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
-                    >
-                      <FileText size={16} /> Rapports
-                    </Link>
-                    {/* Deliberately distinct from the other rows - same pop as its desktop counterpart. */}
-                    <Link
-                      href="/intelligence"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-onyx hover:opacity-90"
-                      style={{ backgroundColor: INTELLIGENCE_YELLOW }}
-                    >
-                      <BarChart3 size={16} /> LOKI Intelligence
-                    </Link>
-                    <div className="my-1 border-t border-border/15" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowRecap((v) => !v);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
-                    >
-                      Récap
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowArchived((v) => !v);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
-                    >
-                      Archivés
-                    </button>
-                  </div>
-                </>
+                // Anchored to the trigger - same coffrage and popIn
+                // animation as WidgetInfoTooltip, not the viewport-pinned
+                // fixed left-4 right-4 top-20 this used before. Which edge
+                // it anchors to is computed on open (mobileMenuAlign, see
+                // toggleMobileMenu) since the trigger isn't reliably near
+                // either screen edge; max-w-[calc(100vw-2rem)] is the
+                // last-resort clamp for whichever side is chosen.
+                <div
+                  className={`absolute ${mobileMenuAlign === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"} top-full mt-1 w-64 max-w-[calc(100vw-2rem)] [animation:popIn_180ms_cubic-bezier(0.32,0.72,0,1)] ${POPOVER_CHROME} z-30 py-1.5 overflow-hidden`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadAll();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    <RefreshCw size={16} /> Rafraîchir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleExportCsv();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    <Download size={16} /> Exporter (Excel)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleExport();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    Sauvegarde complète (JSON)
+                  </button>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    <Settings size={16} /> Paramètres
+                  </Link>
+                  <Link
+                    href="/rapports"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    <FileText size={16} /> Rapports
+                  </Link>
+                  {/* Deliberately distinct from the other rows - same pop as its desktop counterpart. */}
+                  <Link
+                    href="/intelligence"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-onyx hover:opacity-90"
+                    style={{ backgroundColor: INTELLIGENCE_YELLOW }}
+                  >
+                    <BarChart3 size={16} /> LOKI Intelligence
+                  </Link>
+                  <div className="my-1 border-t border-border/15" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRecap((v) => !v);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                  >
+                    Récap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowArchived((v) => !v);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-orange hover:bg-surface2"
+                  >
+                    Archivés
+                  </button>
+                </div>
               )}
             </div>
 
@@ -756,6 +824,7 @@ function DashboardPageInner() {
               onClick={handleLogout}
               className="flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 gap-1.5 text-xs font-medium rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-red-400/40 transition-colors duration-150"
               title="Se déconnecter"
+              aria-label="Se déconnecter"
             >
               <LogOut size={14} />
             </button>
@@ -764,9 +833,7 @@ function DashboardPageInner() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-24 sm:pb-6 space-y-5">
-        {error && (
-          <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
-        )}
+        {error && <ErrorBanner message={error} />}
 
         {showArchived && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/15 bg-surface2 px-4 py-3 text-sm text-textSoft">

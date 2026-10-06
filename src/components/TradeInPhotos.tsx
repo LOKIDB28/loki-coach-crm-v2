@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Trash2, X } from "lucide-react";
 import { Spinner } from "./ui/Spinner";
+import { ErrorBanner } from "./ui/ErrorBanner";
 import type { DealPhoto } from "@/lib/types";
 
 const MAX_PHOTOS = 12;
@@ -159,7 +160,7 @@ export function TradeInPhotos({
         className="hidden"
       />
 
-      {displayedError && <p className="text-xs text-red-500">{displayedError}</p>}
+      {displayedError && <ErrorBanner message={displayedError} />}
 
       {photos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -193,6 +194,7 @@ export function TradeInPhotos({
                     }
                   }}
                   title={confirming ? "Confirmer la suppression" : "Supprimer cette photo"}
+                  aria-label={confirming ? "Confirmer la suppression" : "Supprimer cette photo"}
                   className={`absolute top-1 right-1 flex items-center justify-center min-w-7 min-h-7 rounded-full text-white transition-colors ${
                     confirming ? "bg-red-500" : "bg-onyx/60 hover:bg-onyx/80"
                   }`}
@@ -200,7 +202,11 @@ export function TradeInPhotos({
                   <Trash2 size={13} />
                 </button>
                 {confirming && (
-                  <div className="absolute inset-x-0 bottom-0 bg-onyx/75 text-white text-[9px] leading-tight text-center px-1 py-1">
+                  // role="status" - same reasoning as DealDocuments' identical strip.
+                  <div
+                    role="status"
+                    className="absolute inset-x-0 bottom-0 bg-onyx/75 text-white text-[9px] leading-tight text-center px-1 py-1"
+                  >
                     Appuyer encore pour supprimer
                   </div>
                 )}

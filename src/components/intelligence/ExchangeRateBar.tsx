@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { formatDate, getErrorMessage } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import type { ExchangeRateWithAuthor } from "@/lib/types";
 
 interface ExchangeRateBarProps {
@@ -88,7 +89,10 @@ export function ExchangeRateBar({ rate, onUpdate }: ExchangeRateBarProps) {
           </button>
         </>
       )}
-      {error && <span className="text-red-500">{error}</span>}
+      {/* w-full - this row's own container is flex-wrap, so a full-width
+          block here drops to its own line instead of squeezing into the
+          same row as the rate input/buttons. */}
+      {error && <ErrorBanner message={error} className="w-full" />}
     </div>
   );
 }

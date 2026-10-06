@@ -7,6 +7,7 @@ import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { Spinner } from "./ui/Spinner";
+import { ErrorBanner } from "./ui/ErrorBanner";
 import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS, SOURCE_SUGGESTIONS } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import type { Deal, DealWithContact, NewContact, Profile } from "@/lib/types";
@@ -320,7 +321,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
             <TextArea value={draft.note} onChange={(e) => update("note", e.target.value)} rows={3} />
           </Field>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <ErrorBanner message={error} />}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Copy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -62,9 +63,7 @@ export default function SettingsPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-        {error && (
-          <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
-        )}
+        {error && <ErrorBanner message={error} />}
 
         <section className="bg-surface border border-border/15 rounded-xl p-5 space-y-4">
           <div>
