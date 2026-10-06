@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Trash2, X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 import { Spinner } from "./ui/Spinner";
 import { ErrorBanner } from "./ui/ErrorBanner";
+import { ArmedDeleteButton } from "./ui/ArmedDeleteButton";
 import type { DealPhoto } from "@/lib/types";
 
 const MAX_PHOTOS = 12;
@@ -183,33 +184,16 @@ export function TradeInPhotos({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-textSoft">…</div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirming) {
-                      onDelete(photo);
-                      setConfirmDeleteId(null);
-                    } else {
-                      setConfirmDeleteId(photo.id);
-                    }
+                <ArmedDeleteButton
+                  armed={confirming}
+                  onArm={() => setConfirmDeleteId(photo.id)}
+                  onConfirm={() => {
+                    onDelete(photo);
+                    setConfirmDeleteId(null);
                   }}
-                  title={confirming ? "Confirmer la suppression" : "Supprimer cette photo"}
-                  aria-label={confirming ? "Confirmer la suppression" : "Supprimer cette photo"}
-                  className={`absolute top-1 right-1 flex items-center justify-center min-w-7 min-h-7 rounded-full text-white transition-colors ${
-                    confirming ? "bg-red-500" : "bg-onyx/60 hover:bg-onyx/80"
-                  }`}
-                >
-                  <Trash2 size={13} />
-                </button>
-                {confirming && (
-                  // role="status" - same reasoning as DealDocuments' identical strip.
-                  <div
-                    role="status"
-                    className="absolute inset-x-0 bottom-0 bg-onyx/75 text-white text-[9px] leading-tight text-center px-1 py-1"
-                  >
-                    Appuyer encore pour supprimer
-                  </div>
-                )}
+                  itemLabel="cette photo"
+                  appearance="photo"
+                />
               </div>
             );
           })}
