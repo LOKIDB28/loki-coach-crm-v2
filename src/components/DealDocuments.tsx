@@ -178,6 +178,11 @@ export function DealDocuments({ documents, uploading, error, onUpload, onDelete,
                 >
                   Ouvrir
                 </button>
+                {confirming && (
+                  <span className="shrink-0 text-[11px] font-medium text-red-500 whitespace-nowrap">
+                    Appuyer encore pour supprimer
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {

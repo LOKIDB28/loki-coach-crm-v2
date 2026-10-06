@@ -18,6 +18,14 @@ interface TradeInPhotosProps {
   error: string | null;
   onUpload: (files: File[]) => void;
   onDelete: (photo: DealPhoto) => void;
+  /**
+   * Fires whenever the lightbox opens or closes - DealDrawer (the only
+   * current parent) uses this to defer its own Escape-to-close while a
+   * photo is open on top of it. Deliberately a plain boolean callback
+   * rather than relying on focus/event-bubbling order between the two
+   * components, which is fragile - see the Escape handler below for why.
+   */
+  onLightboxOpenChange: (open: boolean) => void;
 }
 
 /**
@@ -31,11 +39,52 @@ interface TradeInPhotosProps {
  * and one importing already-taken photos later both need to work, not just
  * the first. `multiple` allows picking several files at once either way.
  */
-export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, onDelete }: TradeInPhotosProps) {
+export function TradeInPhotos({
+  photos,
+  photoUrls,
+  uploading,
+  error,
+  onUpload,
+  onDelete,
+  onLightboxOpenChange,
+}: TradeInPhotosProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<DealPhoto | null>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    onLightboxOpenChange(lightboxPhoto !== null);
+  }, [lightboxPhoto, onLightboxOpenChange]);
+
+  // Purely a UX/accessibility nicety (focus lands on the close button
+  // instead of staying wherever it was) - not load-bearing for Escape
+  // itself, which uses a window-level listener below precisely so it
+  // doesn't depend on focus location at all.
+  useEffect(() => {
+    if (lightboxPhoto) lightboxCloseRef.current?.focus({ preventScroll: true });
+  }, [lightboxPhoto]);
+
+  // window-level, not onKeyDown on the lightbox div: the latter only fires
+  // for a keydown that actually bubbles from inside the lightbox's own
+  // subtree, which depends on focus still being in there (e.g. it breaks
+  // if the user clicks the image itself - not focusable, so it wouldn't
+  // move focus away, but also doesn't guarantee focus stayed put either -
+  // or tabs elsewhere, since nothing here traps focus). A window listener,
+  // scoped to exactly while the lightbox is open, always fires regardless.
+  useEffect(() => {
+    if (!lightboxPhoto) return;
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      // Same guard as DealDrawer/NewDealModal, for consistency - an IME
+      // composition elsewhere (unlikely while the lightbox itself holds no
+      // text field, but this listener is window-level and fires regardless
+      // of focus) shouldn't be read as "close the lightbox".
+      if (e.key === "Escape" && !e.isComposing) setLightboxPhoto(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxPhoto]);
 
   // Auto-disarms an armed delete after a few seconds rather than relying on
   // onBlur (which races the click event on the same button - a known
@@ -150,6 +199,11 @@ export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, o
                 >
                   <Trash2 size={13} />
                 </button>
+                {confirming && (
+                  <div className="absolute inset-x-0 bottom-0 bg-onyx/75 text-white text-[9px] leading-tight text-center px-1 py-1">
+                    Appuyer encore pour supprimer
+                  </div>
+                )}
               </div>
             );
           })}
@@ -162,6 +216,7 @@ export function TradeInPhotos({ photos, photoUrls, uploading, error, onUpload, o
           onClick={() => setLightboxPhoto(null)}
         >
           <button
+            ref={lightboxCloseRef}
             type="button"
             onClick={() => setLightboxPhoto(null)}
             aria-label="Fermer"

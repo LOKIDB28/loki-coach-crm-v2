@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -276,9 +276,19 @@ export function DealDrawer({
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
   const DRAWER_TRANSITION_MS = 380;
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  // Set by TradeInPhotos while its lightbox is open - lets this drawer's own
+  // Escape handling defer to it deterministically, independent of focus
+  // (see the window keydown effect below for why that matters).
+  const [topLayerOpen, setTopLayerOpen] = useState(false);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
+    // Purely a UX/accessibility nicety (focus lands somewhere sensible
+    // instead of staying on whatever triggered the open) - not load-bearing
+    // for Escape-to-close itself, which no longer depends on focus at all.
+    closeBtnRef.current?.focus({ preventScroll: true });
     return () => cancelAnimationFrame(raf);
   }, []);
 
@@ -287,10 +297,19 @@ export function DealDrawer({
     setTimeout(onClose, DRAWER_TRANSITION_MS);
   }
 
-  // Archiver / Marquer gagné / Marquer perdu share one pending-confirmation
-  // slot rather than three near-identical boolean flags + banners.
-  const [pendingAction, setPendingAction] = useState<"archive" | "gagne" | "perdu" | null>(null);
+  // Archiver / Marquer gagné / Marquer perdu / fermer (si non enregistré)
+  // share one pending-confirmation slot rather than near-identical boolean
+  // flags + banners for each.
+  const [pendingAction, setPendingAction] = useState<"archive" | "gagne" | "perdu" | "close" | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+
+  // A banner opened from Escape/backdrop-click can be triggered from any
+  // scroll position in the drawer (unlike the archive/gagné/perdu buttons,
+  // which already sit right next to where their own banner renders) -
+  // scrolled into view every time so it's never invisible above the fold.
+  useEffect(() => {
+    if (pendingAction) bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [pendingAction]);
 
   // Shared error surface for every save path in this drawer - previously a
   // failed request (e.g. writing to a column that doesn't exist yet) threw
@@ -544,8 +563,75 @@ export function DealDrawer({
   const gagneStage = stageByCode("gagne");
   const perduStage = stageByCode("perdu");
 
+  const hasUnsavedChanges =
+    section1.dirty || section3.dirty || section4.dirty || section6.dirty || section7.dirty;
+
+  /**
+   * A native popup (the "Source" datalist's suggestion list, or a date/
+   * datetime-local field's picker) also closes on Escape, as pure browser
+   * behavior we never see as a keydown with any reliable "a popup was
+   * open" signal - the only thing script can check is what's currently
+   * focused. Treating Escape as a no-op while one of these is focused means
+   * at worst a second Escape (with focus moved elsewhere) is needed to
+   * close the drawer - far better than the popup and the drawer both
+   * reacting to the same keypress.
+   */
+  function isAutocompleteOrDateField(el: Element | null): boolean {
+    if (!el || el.tagName !== "INPUT") return false;
+    const input = el as HTMLInputElement;
+    return input.hasAttribute("list") || ["date", "datetime-local", "time", "month", "week"].includes(input.type);
+  }
+
+  function attemptClose() {
+    // A banner is already up (archive/gagné/perdu, or this same close
+    // confirmation from a previous attempt) - leave it to its own
+    // Confirmer/Annuler rather than layering another dismissal on top.
+    if (pendingAction) return;
+    if (hasUnsavedChanges) {
+      setPendingAction("close");
+    } else {
+      handleClose();
+    }
+  }
+
+  // window-level, not a React onKeyDown on the backdrop div: that earlier
+  // version only fired for a keydown that actually bubbled from inside this
+  // subtree, which silently stopped working the moment focus ended up
+  // anywhere else (lost to document.body, tabbed out with no focus trap,
+  // or - the case that matters here - inside TradeInPhotos' lightbox,
+  // nested one level deeper). A window listener always fires regardless of
+  // focus location, so "which layer handles this Escape" is decided
+  // explicitly below (topLayerOpen) instead of being an accident of
+  // whatever currently happens to have focus.
+  useEffect(() => {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      // A dead-key accent sequence (^ then e for ê, " then a for ä, etc.)
+      // is an IME composition in progress - some browsers fire this same
+      // Escape keydown to cancel just that composition, not to ask for
+      // anything else. isComposing true means the key never left the
+      // input's own composition handling, so this doesn't interpret it as
+      // a request to close.
+      if (e.isComposing) return;
+      if (topLayerOpen) return; // TradeInPhotos' lightbox owns this keypress instead
+      if (isAutocompleteOrDateField(document.activeElement)) return;
+      attemptClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  function handleBackdropClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) attemptClose();
+  }
+
   async function confirmPendingAction() {
     if (!pendingAction) return;
+    if (pendingAction === "close") {
+      setPendingAction(null);
+      handleClose();
+      return;
+    }
     setActionBusy(true);
     setSaveError(null);
     try {
@@ -584,6 +670,7 @@ export function DealDrawer({
       className={`fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm transition-opacity duration-300 ${
         drawerVisible ? "opacity-100" : "opacity-0"
       }`}
+      onClick={handleBackdropClick}
     >
       <div
         className={`w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
@@ -632,8 +719,9 @@ export function DealDrawer({
               </button>
             )}
             <button
+              ref={closeBtnRef}
               type="button"
-              onClick={handleClose}
+              onClick={attemptClose}
               className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-text"
               aria-label="Fermer"
             >
@@ -665,6 +753,7 @@ export function DealDrawer({
 
           {pendingAction && (
             <div
+              ref={bannerRef}
               className={`rounded-xl border px-3.5 py-3 space-y-2 backdrop-blur-sm ${
                 pendingAction === "gagne"
                   ? "border-green/30 bg-green/10"
@@ -678,6 +767,7 @@ export function DealDrawer({
                   "Archiver ce dossier ? Il disparaîtra de la vue Pipeline par défaut, mais restera consultable via «Afficher les dossiers archivés» et pourra être désarchivé à tout moment."}
                 {pendingAction === "gagne" && "Marquer ce dossier comme gagné ?"}
                 {pendingAction === "perdu" && "Marquer ce dossier comme perdu ?"}
+                {pendingAction === "close" && "Fermer sans enregistrer ? Les modifications non enregistrées seront perdues."}
               </p>
               <div className="flex gap-2">
                 <button
@@ -1190,6 +1280,7 @@ export function DealDrawer({
                     error={photoError}
                     onUpload={onUploadPhotos}
                     onDelete={onDeletePhoto}
+                    onLightboxOpenChange={setTopLayerOpen}
                   />
                 </>
               )}

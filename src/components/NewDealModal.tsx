@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
@@ -36,8 +36,54 @@ const emptyDraft = {
 
 export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate }: NewDealModalProps) {
   const [draft, setDraft] = useState(emptyDraft);
+  const [dirty, setDirty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingClose, setPendingClose] = useState(false);
+
+  // `open` is a prop the parent flips instantly, but a real exit animation
+  // needs this component to keep rendering for a moment after that -
+  // shouldRender/visible decouple "still in the DOM, playing the closing
+  // transition" from the parent's own boolean, same idea as DealDrawer's
+  // mounted/closing pair (see there for the fuller version of this split).
+  const [shouldRender, setShouldRender] = useState(open);
+  const [visible, setVisible] = useState(false);
+  const MODAL_TRANSITION_MS = 200;
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setShouldRender(true);
+      return;
+    }
+    setVisible(false);
+    const t = setTimeout(() => setShouldRender(false), MODAL_TRANSITION_MS);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  // Separate from the effect above on purpose: that one fires on the render
+  // where `shouldRender` is still false (it's what sets it true), so the
+  // real form JSX - firstFieldRef included - doesn't exist in the DOM yet.
+  // This one is keyed on shouldRender itself, so it only runs on the
+  // following render, once that JSX has actually committed - the rAF just
+  // waits one more frame past that so the opacity/scale transition starts
+  // from its initial state instead of skipping straight to the end one.
+  useEffect(() => {
+    if (!shouldRender) return;
+    const raf = requestAnimationFrame(() => {
+      setVisible(true);
+      firstFieldRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [shouldRender]);
+
+  // A banner opened from Escape/backdrop-click can happen with the form
+  // scrolled down - scrolled into view every time so it's never invisible
+  // above the fold, same reasoning as DealDrawer's equivalent banner.
+  useEffect(() => {
+    if (pendingClose) bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [pendingClose]);
 
   const clientDupes = useMemo(
     () =>
@@ -55,10 +101,56 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
     [draft.coach_vise, existingDeals]
   );
 
-  if (!open) return null;
+  if (!shouldRender) return null;
 
   function update<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
+    setDirty(true);
+  }
+
+  function reallyClose() {
+    setDraft(emptyDraft);
+    setError(null);
+    setDirty(false);
+    setPendingClose(false);
+    onClose();
+  }
+
+  // Same rationale as DealDrawer's identical guard: a native popup (the
+  // "Source" datalist, or a date/datetime-local picker) also closes on
+  // Escape as pure browser behavior, invisible to script except through
+  // what's currently focused - skip our own close logic for that keypress
+  // rather than risk closing the modal underneath it too.
+  function isAutocompleteOrDateField(el: Element | null): boolean {
+    if (!el || el.tagName !== "INPUT") return false;
+    const input = el as HTMLInputElement;
+    return input.hasAttribute("list") || ["date", "datetime-local", "time", "month", "week"].includes(input.type);
+  }
+
+  function attemptClose() {
+    if (pendingClose) return;
+    if (dirty) {
+      setPendingClose(true);
+    } else {
+      reallyClose();
+    }
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key !== "Escape") return;
+    // Same reasoning as DealDrawer's identical guard: a dead-key accent
+    // sequence (^ then e for ê, etc.) is an IME composition in progress -
+    // some browsers fire this same Escape to cancel just that composition.
+    // nativeEvent, not e.isComposing directly - this project's installed
+    // @types/react doesn't declare that property on the synthetic event,
+    // even though React does forward it; the underlying native event has it.
+    if (e.nativeEvent.isComposing) return;
+    if (isAutocompleteOrDateField(document.activeElement)) return;
+    attemptClose();
+  }
+
+  function handleBackdropClick(e: MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) attemptClose();
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -87,8 +179,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
         coach_vise: draft.coach_vise.trim() || null,
       };
       await onCreate(contactInput, dealInput, draft.note.trim());
-      setDraft(emptyDraft);
-      onClose();
+      reallyClose();
     } catch (err) {
       setError(getErrorMessage(err, "Erreur lors de la création du dossier."));
     } finally {
@@ -97,13 +188,23 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-onyx/50 backdrop-blur-sm px-4 py-6 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-surface/60 backdrop-blur-md border border-border/10 rounded-2xl shadow-xl my-auto">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-onyx/50 backdrop-blur-sm px-4 py-6 overflow-y-auto transition-opacity duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+      onKeyDown={handleKeyDown}
+      onClick={handleBackdropClick}
+    >
+      <div
+        className={`w-full max-w-2xl bg-surface/60 backdrop-blur-md border border-border/10 rounded-2xl shadow-xl my-auto transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        }`}
+      >
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border/15">
           <h2 className="text-lg font-semibold text-text min-w-0">Nouveau client — Prospect identifié</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={attemptClose}
             className="flex items-center justify-center min-w-11 min-h-11 shrink-0 text-textSoft hover:text-text"
             aria-label="Fermer"
           >
@@ -112,6 +213,28 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
         </div>
 
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+          {pendingClose && (
+            <div ref={bannerRef} className="rounded-xl border border-border/20 bg-surface2/70 px-3.5 py-3 space-y-2 backdrop-blur-sm">
+              <p className="text-sm text-text">Fermer sans enregistrer ? Les informations saisies seront perdues.</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={reallyClose}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90"
+                >
+                  Confirmer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingClose(false)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+
           {(clientDupes.length > 0 || coachDupes.length > 0) && (
             <div className="space-y-1.5">
               {clientDupes.length > 0 && (
@@ -131,7 +254,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prénom">
-              <TextInput value={draft.prenom} onChange={(e) => update("prenom", e.target.value)} required />
+              <TextInput ref={firstFieldRef} value={draft.prenom} onChange={(e) => update("prenom", e.target.value)} required />
             </Field>
             <Field label="Nom">
               <TextInput value={draft.nom} onChange={(e) => update("nom", e.target.value)} />
@@ -202,7 +325,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={attemptClose}
               className="text-xs font-medium px-4 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text"
             >
               Annuler

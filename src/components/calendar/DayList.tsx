@@ -30,7 +30,7 @@ export function DayList({ days, events, repColorFor, onOpen }: DayListProps) {
     .filter((d) => d.dayEvents.length > 0);
 
   if (daysWithEvents.length === 0) {
-    return <p className="text-sm text-textSoft py-8 text-center">Aucun événement cette semaine.</p>;
+    return <p className="text-sm text-textSoft py-10 text-center">Aucun événement cette semaine.</p>;
   }
 
   return (
