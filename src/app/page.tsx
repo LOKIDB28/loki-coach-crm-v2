@@ -139,51 +139,61 @@ function DashboardPageInner() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
-  // Which edge the panel's own edge anchors to - computed each time it
-  // opens (not a fixed "always right-0"), because the trigger isn't
-  // reliably near the screen's right edge (other header content before it
-  // varies with app state) - a fixed right-0 anchor overflowed the left
-  // edge by over 100px in the exact case this was built for (a 320px-wide
-  // phone), measured directly, not assumed. This is the real reason the
-  // old `fixed left-4 right-4 top-20` version avoided anchoring at all;
-  // this keeps the anchor but adds the missing other half of that logic
-  // instead of dropping it.
-  const [mobileMenuAlign, setMobileMenuAlign] = useState<"left" | "right">("right");
-  const MOBILE_MENU_WIDTH_PX = 256; // w-64
+  const MOBILE_MENU_PREFERRED_WIDTH_PX = 256; // w-64, used when there's room
+  const MOBILE_MENU_EDGE_MARGIN_PX = 8;
+  // Explicit pixel left/width (wrapper-relative), not a left-0/right-0
+  // Tailwind class - computed fresh on every open from the trigger's real
+  // position, clamped so the panel's own edges are never closer than
+  // MOBILE_MENU_EDGE_MARGIN_PX to either screen edge. A class-based
+  // left-0/right-0 choice (this component's previous version) can only
+  // pick one of two fixed anchors and still overflow when the trigger
+  // sits too close to the middle of a narrow screen for either to fit -
+  // this clamps the actual number instead, so it never overflows at all.
+  const [mobileMenuPos, setMobileMenuPos] = useState<{ left: number; width: number } | null>(null);
+
+  function computeMobileMenuPosition(): { left: number; width: number } | null {
+    const triggerRect = mobileMenuTriggerRef.current?.getBoundingClientRect();
+    const wrapperRect = mobileMenuRef.current?.getBoundingClientRect();
+    if (!triggerRect || !wrapperRect) return null;
+    const viewportWidth = window.innerWidth;
+    const width = Math.min(MOBILE_MENU_PREFERRED_WIDTH_PX, viewportWidth - MOBILE_MENU_EDGE_MARGIN_PX * 2);
+    // Prefers right-anchored (panel's right edge at the trigger's right
+    // edge, extending left), same as before - just clamped now instead of
+    // only conditionally flipped.
+    const idealLeftInViewport = triggerRect.right - width;
+    const clampedLeftInViewport = Math.max(
+      MOBILE_MENU_EDGE_MARGIN_PX,
+      Math.min(idealLeftInViewport, viewportWidth - MOBILE_MENU_EDGE_MARGIN_PX - width)
+    );
+    // The panel is positioned absolute within mobileMenuRef (not fixed to
+    // the viewport), so its own `left` is relative to that wrapper, not
+    // the screen - converted here once so the render side stays simple.
+    return { left: clampedLeftInViewport - wrapperRect.left, width };
+  }
 
   function toggleMobileMenu() {
     setMobileMenuOpen((wasOpen) => {
       if (wasOpen) return false;
-      const rect = mobileMenuTriggerRef.current?.getBoundingClientRect();
-      if (rect) {
-        // Picks whichever anchor overflows LESS, not just "does it
-        // overflow at all" - on a narrow phone with the trigger roughly
-        // centered (not flush against either edge), both anchors can
-        // overflow simultaneously (confirmed: at 320px wide with this
-        // trigger's real position, right-anchored overflowed left by
-        // 144px while left-anchored only overflowed right by ~4px - a
-        // boolean-only check would have kept the far worse of the two).
-        // max-w-[calc(100vw-2rem)] still clamps whichever is chosen.
-        const margin = 8;
-        const rightAnchorOverflow = Math.max(0, margin - (rect.right - MOBILE_MENU_WIDTH_PX));
-        const leftAnchorOverflow = Math.max(0, rect.left + MOBILE_MENU_WIDTH_PX - (window.innerWidth - margin));
-        setMobileMenuAlign(leftAnchorOverflow < rightAnchorOverflow ? "left" : "right");
-      }
+      setMobileMenuPos(computeMobileMenuPosition());
       return true;
     });
   }
 
-  // Outside click (mousedown, same pattern as WidgetInfoTooltip) and Escape
+  // Outside click (mousedown, same pattern as WidgetInfoTooltip), Escape
   // (window-level, same pattern as DealDrawer/NewDealModal/TradeInPhotos'
   // lightbox - not a React onKeyDown on the panel itself, so it doesn't
-  // depend on focus being inside it). isComposing ignored for the same
-  // dead-key-accent reason as those three. There's no other layer this menu
-  // could be nested under or need to defer to (opening it is blocked
-  // entirely while the drawer/modal's own full-screen backdrop is up), but
-  // mousedown firing before a native click - never stopped or prevented
-  // here - still guarantees this menu's own close is scheduled before
-  // whatever the same click also lands on (e.g. a deal card behind it)
-  // gets to react, without needing any shared layer flag to enforce it.
+  // depend on focus being inside it; isComposing ignored for the same
+  // dead-key-accent reason as those three), and resize/orientation change
+  // (the clamped position above is only ever computed at open time - it
+  // goes stale the instant the viewport itself resizes, e.g. a phone
+  // rotating from portrait to landscape, so this closes rather than try to
+  // recompute live). There's no other layer this menu could be nested
+  // under or need to defer to (opening it is blocked entirely while the
+  // drawer/modal's own full-screen backdrop is up), but mousedown firing
+  // before a native click - never stopped or prevented here - still
+  // guarantees this menu's own close is scheduled before whatever the same
+  // click also lands on (e.g. a deal card behind it) gets to react,
+  // without needing any shared layer flag to enforce it.
   useEffect(() => {
     if (!mobileMenuOpen) return;
     function handleMouseDown(e: MouseEvent) {
@@ -194,11 +204,18 @@ function DashboardPageInner() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && !e.isComposing) setMobileMenuOpen(false);
     }
+    function handleResize() {
+      setMobileMenuOpen(false);
+    }
     document.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
     };
   }, [mobileMenuOpen]);
   const [newDealOpen, setNewDealOpen] = useState(false);
@@ -730,16 +747,16 @@ function DashboardPageInner() {
               >
                 <MoreHorizontal size={18} />
               </button>
-              {mobileMenuOpen && (
+              {mobileMenuOpen && mobileMenuPos && (
                 // Anchored to the trigger - same coffrage and popIn
                 // animation as WidgetInfoTooltip, not the viewport-pinned
-                // fixed left-4 right-4 top-20 this used before. Which edge
-                // it anchors to is computed on open (mobileMenuAlign, see
-                // toggleMobileMenu) since the trigger isn't reliably near
-                // either screen edge; max-w-[calc(100vw-2rem)] is the
-                // last-resort clamp for whichever side is chosen.
+                // fixed left-4 right-4 top-20 this used before. left/width
+                // are the clamped pixel values from computeMobileMenuPosition
+                // (never closer than MOBILE_MENU_EDGE_MARGIN_PX to either
+                // screen edge), not a left-0/right-0 class choice.
                 <div
-                  className={`absolute ${mobileMenuAlign === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left"} top-full mt-1 w-64 max-w-[calc(100vw-2rem)] [animation:popIn_180ms_cubic-bezier(0.32,0.72,0,1)] ${POPOVER_CHROME} z-30 py-1.5 overflow-hidden`}
+                  style={{ left: mobileMenuPos.left, width: mobileMenuPos.width }}
+                  className={`absolute top-full mt-1 origin-top [animation:popIn_180ms_cubic-bezier(0.32,0.72,0,1)] ${POPOVER_CHROME} z-30 py-1.5 overflow-hidden`}
                 >
                   <button
                     type="button"
