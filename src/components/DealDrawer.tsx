@@ -16,6 +16,7 @@ import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
+import { Button } from "./ui/Button";
 import { CurrencyInput } from "./ui/CurrencyInput";
 import { UnitPicker } from "./ui/UnitPicker";
 import { Spinner } from "./ui/Spinner";
@@ -869,20 +870,27 @@ export function DealDrawer({
               effect of the stepper, and never disabled by current state
               (a "perdu" deal can always be reopened as "gagné" later). */}
           <div className="flex gap-2">
+            {/* Stays a plain <button>, not <Button> - the reserved vert vif
+                (COLORS.green, see theme.ts) never passes through the shared
+                component. Only the height/padding classes are copied from
+                Button's own compact+touch size so this row-mate grows to
+                44px on mobile in lockstep with "Marquer perdu" below,
+                instead of one of the two opting out. */}
             <button
               type="button"
               onClick={() => setPendingAction("gagne")}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-green text-onyx hover:bg-green/90"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium min-h-11 px-3.5 sm:min-h-0 sm:py-1.5 sm:px-3 rounded-lg bg-green text-onyx hover:bg-green/90"
             >
               <CheckCircle2 size={14} /> Marquer gagné
             </button>
-            <button
-              type="button"
+            <Button
+              variant="destructive"
+              size="compact"
+              className="flex-1"
               onClick={() => setPendingAction("perdu")}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-red-400/40 text-red-500 hover:bg-red-500/10"
             >
               <XCircle size={14} /> Marquer perdu
-            </button>
+            </Button>
           </div>
 
           {/* "Historique & notes" - moved up here (was below the quick

@@ -8,7 +8,14 @@ export const COLORS = {
   paper: "#FFFFFF", // texte clair, cartes
   paperDim: "#F9F9F9", // cartes/fond secondaire
   stone: "#6B7280", // texte secondaire
-  green: "#A6FA30", // accent rare - alertes positives, à utiliser avec parcimonie
+  // accent rare - alertes positives, à utiliser avec parcimonie. Trois
+  // usages sanctionnés à ce jour: le badge "Gagné" (DealDrawer), le flash
+  // "Enregistré ✓" de SaveSectionButton (DealDrawer), et le flash "Copié ✓"
+  // du bouton de settings/page.tsx - même famille (confirmation ponctuelle
+  // d'une action réussie), volontairement non généralisée au composant
+  // Button partagé (Lot 4): ce dernier n'a qu'une variante primaire teal,
+  // jamais vert vif.
+  green: "#A6FA30",
   orange: "#FF5C34", // liens secondaires discrets (JSON backup, toggles récap/archives) - added outside the original strict palette, by explicit request
 } as const;
 
