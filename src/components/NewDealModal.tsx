@@ -138,6 +138,13 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
 
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key !== "Escape") return;
+    // Same reasoning as DealDrawer's identical guard: a dead-key accent
+    // sequence (^ then e for ê, etc.) is an IME composition in progress -
+    // some browsers fire this same Escape to cancel just that composition.
+    // nativeEvent, not e.isComposing directly - this project's installed
+    // @types/react doesn't declare that property on the synthetic event,
+    // even though React does forward it; the underlying native event has it.
+    if (e.nativeEvent.isComposing) return;
     if (isAutocompleteOrDateField(document.activeElement)) return;
     attemptClose();
   }

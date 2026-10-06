@@ -76,7 +76,11 @@ export function TradeInPhotos({
   useEffect(() => {
     if (!lightboxPhoto) return;
     function onKeyDown(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") setLightboxPhoto(null);
+      // Same guard as DealDrawer/NewDealModal, for consistency - an IME
+      // composition elsewhere (unlikely while the lightbox itself holds no
+      // text field, but this listener is window-level and fires regardless
+      // of focus) shouldn't be read as "close the lightbox".
+      if (e.key === "Escape" && !e.isComposing) setLightboxPhoto(null);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

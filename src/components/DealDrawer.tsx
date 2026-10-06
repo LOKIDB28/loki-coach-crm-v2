@@ -606,6 +606,13 @@ export function DealDrawer({
   useEffect(() => {
     function onKeyDown(e: globalThis.KeyboardEvent) {
       if (e.key !== "Escape") return;
+      // A dead-key accent sequence (^ then e for ê, " then a for ä, etc.)
+      // is an IME composition in progress - some browsers fire this same
+      // Escape keydown to cancel just that composition, not to ask for
+      // anything else. isComposing true means the key never left the
+      // input's own composition handling, so this doesn't interpret it as
+      // a request to close.
+      if (e.isComposing) return;
       if (topLayerOpen) return; // TradeInPhotos' lightbox owns this keypress instead
       if (isAutocompleteOrDateField(document.activeElement)) return;
       attemptClose();
