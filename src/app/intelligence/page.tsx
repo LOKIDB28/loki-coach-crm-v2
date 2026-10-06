@@ -25,6 +25,7 @@ import { RateShareChart } from "@/components/intelligence/RateShareChart";
 import { RepStageForecastChart } from "@/components/intelligence/RepStageForecastChart";
 import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownChart";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { WidgetInfoTooltip } from "@/components/intelligence/WidgetInfoTooltip";
 import type {
   DealWithContact,
@@ -139,9 +140,7 @@ export default function IntelligencePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {error && (
-          <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-4 py-3 text-sm text-red-500">{error}</div>
-        )}
+        {error && <ErrorBanner message={error} />}
 
         {loading ? (
           <p className="flex items-center justify-center gap-2 text-sm text-textSoft py-10">

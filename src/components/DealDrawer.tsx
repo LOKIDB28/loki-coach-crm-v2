@@ -19,6 +19,7 @@ import { Select } from "./ui/Select";
 import { CurrencyInput } from "./ui/CurrencyInput";
 import { UnitPicker } from "./ui/UnitPicker";
 import { Spinner } from "./ui/Spinner";
+import { ErrorBanner } from "./ui/ErrorBanner";
 import { Section } from "./Section";
 import { ActivityFeed } from "./ActivityFeed";
 import { DealDocuments } from "./DealDocuments";
@@ -686,6 +687,8 @@ export function DealDrawer({
                   className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white shrink-0"
                   style={{ backgroundColor: IMPORT_BADGE_COLOR }}
                   title="Importé de Pipedrive"
+                  role="img"
+                  aria-label="Importé de Pipedrive"
                 >
                   P
                 </span>
@@ -731,19 +734,7 @@ export function DealDrawer({
         </div>
 
         <div className="px-5 py-4 space-y-5">
-          {saveError && (
-            <div className="flex items-start justify-between gap-2 rounded-lg border border-red-400/30 bg-red-500/5 px-3 py-2 text-sm text-red-500">
-              <span>{saveError}</span>
-              <button
-                type="button"
-                onClick={() => setSaveError(null)}
-                className="shrink-0 hover:text-red-600"
-                aria-label="Fermer le message d'erreur"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
+          {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
 
           {deal.archived && (
             <div className="rounded-lg bg-textSoft/10 px-3 py-2 text-xs text-textSoft">
@@ -822,7 +813,6 @@ export function DealDrawer({
                 onClick={() => onChangeStage(openStages[openIndex - 1]!.id)}
                 className="flex items-center justify-center min-w-11 min-h-11 text-textSoft hover:text-teal disabled:opacity-30 disabled:hover:text-textSoft"
                 aria-label="Étape précédente"
-                title={prevBlockedByContact ? "Retour à Prospect impossible - premier contact déjà enregistré" : undefined}
               >
                 <ChevronLeft size={20} />
               </button>
@@ -861,6 +851,17 @@ export function DealDrawer({
                   />
                 ))}
               </div>
+            )}
+            {/* Was title= on the prev-stage chevron alone - invisible on
+                touch and to a sighted keyboard user (no hover, and a title
+                attribute isn't read without one). A visible line explains it
+                regardless of input method, same reasoning as the two-click
+                delete's "Appuyer encore pour supprimer" in DealDocuments/
+                TradeInPhotos. */}
+            {prevBlockedByContact && (
+              <p className="text-[11px] text-textSoft text-center pt-2 mt-2 border-t border-border/10">
+                Retour à Prospect impossible - premier contact déjà enregistré
+              </p>
             )}
           </div>
 

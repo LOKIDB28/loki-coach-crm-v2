@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileText, Trash2, Upload } from "lucide-react";
 import { formatDate, getErrorMessage } from "@/lib/format";
 import { Spinner } from "./ui/Spinner";
+import { ErrorBanner } from "./ui/ErrorBanner";
 import type { DealDocument } from "@/lib/types";
 
 const MAX_DOCUMENTS = 10;
@@ -153,7 +154,7 @@ export function DealDocuments({ documents, uploading, error, onUpload, onDelete,
         className="hidden"
       />
 
-      {displayedError && <p className="text-xs text-red-500">{displayedError}</p>}
+      {displayedError && <ErrorBanner message={displayedError} />}
 
       {documents.length > 0 && (
         <div className="space-y-1.5">
@@ -179,7 +180,12 @@ export function DealDocuments({ documents, uploading, error, onUpload, onDelete,
                   Ouvrir
                 </button>
                 {confirming && (
-                  <span className="shrink-0 text-[11px] font-medium text-red-500 whitespace-nowrap">
+                  // role="status" (implicit aria-live="polite") - announces
+                  // itself the moment it appears, so a screen reader user
+                  // hears "Appuyer encore pour supprimer" right when the
+                  // button arms, not only on their next Tab into it (which
+                  // may be after the 3s auto-disarm has already reverted it).
+                  <span role="status" className="shrink-0 text-[11px] font-medium text-red-500 whitespace-nowrap">
                     Appuyer encore pour supprimer
                   </span>
                 )}
@@ -194,6 +200,7 @@ export function DealDocuments({ documents, uploading, error, onUpload, onDelete,
                     }
                   }}
                   title={confirming ? "Confirmer la suppression" : "Supprimer ce document"}
+                  aria-label={confirming ? "Confirmer la suppression" : "Supprimer ce document"}
                   className={`shrink-0 flex items-center justify-center min-w-7 min-h-7 rounded-full transition-colors ${
                     confirming ? "bg-red-500 text-white" : "text-textSoft hover:bg-border/10 hover:text-red-500"
                   }`}
