@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DealHoverContent } from "@/components/DealHoverContent";
 import { HoverTooltip } from "@/components/HoverTooltip";
@@ -34,6 +35,25 @@ export function KanbanColumn({
   onOpen,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `stage-${stage.id}`, data: { stageId: stage.id } });
+
+  // KanbanCard/DealCard are React.memo'd (see those files) specifically so
+  // this column's own per-frame re-render during an active drag (driven by
+  // useDroppable above, which updates on every pointer move, not just on an
+  // isOver transition) doesn't cascade into every rendered card. That only
+  // works if every prop reaching them is referentially stable across those
+  // re-renders - deal/stage/ownerName/hasClientDupe/hasCoachDupe already
+  // are (stable array items, stable prop, or primitives compared by value),
+  // but a plain `onOpen={() => onOpen(d.id)}` inline in the map below would
+  // still create a brand-new function per card on every one of this
+  // column's own re-renders, silently defeating memo for all 300+ cards.
+  // This Map only gets rebuilt when `deals` or `onOpen` themselves change -
+  // never from this column's own drag-driven re-renders - so each card
+  // keeps the exact same callback reference across them.
+  const openHandlers = useMemo(() => {
+    const map = new Map<string, () => void>();
+    for (const d of deals) map.set(d.id, () => onOpen(d.id));
+    return map;
+  }, [deals, onOpen]);
 
   return (
     <div className="flex flex-col w-[280px] shrink-0">
@@ -96,7 +116,7 @@ export function KanbanColumn({
                 ownerName={d.owner_id ? profileById.get(d.owner_id)?.nom ?? profileById.get(d.owner_id)?.email ?? null : null}
                 hasClientDupe={dupeClientIds.has(d.id)}
                 hasCoachDupe={dupeCoachIds.has(d.id)}
-                onOpen={() => onOpen(d.id)}
+                onOpen={openHandlers.get(d.id)!}
               />
             </HoverTooltip>
           ))

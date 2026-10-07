@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { DealCard } from "@/components/DealCard";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
@@ -39,7 +40,22 @@ interface KanbanCardProps {
  * still permits panning/scrolling; TouchSensor's own JS-level delay is what
  * decides whether a given gesture becomes a drag instead.
  */
-export function KanbanCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, onOpen }: KanbanCardProps) {
+// Memoized so this column's own per-frame re-render during an active drag
+// (see KanbanColumn's useDroppable comment) doesn't cascade into every
+// rendered card - only the one whose own props actually changed (e.g. its
+// `isDragging`-driven styling, below) re-renders. Default shallow
+// comparison is enough: every prop here is already stable across those
+// re-renders (deal/stage are untouched references, the booleans/ownerName
+// are primitives compared by value, and onOpen is the Map-memoized
+// per-id callback from KanbanColumn, not a fresh closure).
+export const KanbanCard = memo(function KanbanCard({
+  deal,
+  stage,
+  ownerName,
+  hasClientDupe,
+  hasCoachDupe,
+  onOpen,
+}: KanbanCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: deal.id });
 
   return (
@@ -69,4 +85,4 @@ export function KanbanCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe
       />
     </div>
   );
-}
+});

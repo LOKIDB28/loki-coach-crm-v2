@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
 import { daysOverdue, daysSince, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
@@ -15,7 +16,21 @@ interface DealCardProps {
   onOpen: () => void;
 }
 
-export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, onOpen }: DealCardProps) {
+// Memoized so a Kanban column's own per-frame re-render during an active
+// drag doesn't cascade into every card's own DealCard - KanbanCard (the
+// only caller affected by that) already keeps every prop reaching here
+// referentially stable (see its own comment). Also used directly by the
+// plain pipeline grid (page.tsx) and KanbanBoard's DragOverlay - harmless
+// there either way, since memo only skips work when props are already
+// shallow-equal.
+export const DealCard = memo(function DealCard({
+  deal,
+  stage,
+  ownerName,
+  hasClientDupe,
+  hasCoachDupe,
+  onOpen,
+}: DealCardProps) {
   const { contact } = deal;
   const name = fullName(contact) || "(sans nom)";
 
@@ -210,4 +225,4 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
       )}
     </button>
   );
-}
+});
