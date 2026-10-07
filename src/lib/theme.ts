@@ -100,6 +100,21 @@ export const REP_COLORS = {
 // two call sites, both already reading from this file.
 export const INTELLIGENCE_YELLOW = "#EDFF00";
 
+// Not a new hue - a seventh explicit exception, but a darker SHADE of the
+// existing `orange` (#FF5C34) above, for one specific accessibility fix:
+// ReportGenerator's stagnation-threshold banner uses text-orange on
+// bg-orange/5, which measures only 2.91:1 in light mode (below WCAG AA's
+// 4.5:1 for body text) - the project's own `orange: "#FF5C34"` flat
+// override in tailwind.config.ts shadows Tailwind's default numbered
+// orange-50..900 scale entirely, so a built-in shade like orange-700 isn't
+// available; this hex is Tailwind's own orange-700 value, kept as a literal
+// since the default scale can't be reached here. Dark mode doesn't need
+// this - text-orange already measures 5.30:1 there. Applied via a Tailwind
+// arbitrary-value class (text-[#C2410C] dark:text-orange) at its one call
+// site, same reasoning as RELANCE_COLORS above re: why this export isn't
+// imported directly into the class string.
+export const AMBER_BANNER_TEXT_LIGHT = "#C2410C";
+
 // System font stack (San Francisco on Apple platforms, matching system fonts
 // elsewhere) - no web font load, per Apple's own typography guidance.
 export const FONT_SYSTEM =
