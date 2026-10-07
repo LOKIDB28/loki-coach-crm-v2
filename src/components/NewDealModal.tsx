@@ -51,7 +51,10 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
   const [visible, setVisible] = useState(false);
   const MODAL_TRANSITION_MS = 200;
   const firstFieldRef = useRef<HTMLInputElement>(null);
-  const bannerRef = useRef<HTMLDivElement>(null);
+  // Focused when the "Fermer sans enregistrer ?" banner replaces the
+  // Annuler/Créer pair in the sticky footer (see below) - lands on Annuler,
+  // not Confirmer, so an accidental Enter keypress doesn't discard the draft.
+  const cancelInBannerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -79,11 +82,13 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
     return () => cancelAnimationFrame(raf);
   }, [shouldRender]);
 
-  // A banner opened from Escape/backdrop-click can happen with the form
-  // scrolled down - scrolled into view every time so it's never invisible
-  // above the fold, same reasoning as DealDrawer's equivalent banner.
+  // The banner now renders in the footer (always visible, outside the
+  // scrollable area - see the form below), so it no longer needs scrolling
+  // into view the way DealDrawer's equivalent banner still does. What it
+  // does need: focus lands on Annuler, not Confirmer, so an accidental
+  // Enter keypress right after Escape doesn't discard the draft.
   useEffect(() => {
-    if (pendingClose) bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (pendingClose) cancelInBannerRef.current?.focus({ preventScroll: true });
   }, [pendingClose]);
 
   const clientDupes = useMemo(
@@ -213,132 +218,163 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
-          {pendingClose && (
-            <div ref={bannerRef} className="rounded-xl border border-border/20 bg-surface2/70 px-3.5 py-3 space-y-2 backdrop-blur-sm">
-              <p className="text-sm text-text">Fermer sans enregistrer ? Les informations saisies seront perdues.</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={reallyClose}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90"
+        {/* flex-col + a dedicated scroll area (not the whole form) so the
+            footer below is a normal flex sibling, never something the
+            scrollable content can cover - the last field is guaranteed
+            visible above it once scrolled to the bottom, by construction,
+            not by padding math. min-h-0 is required here: a flex child's
+            default min-height is its content's own height, not 0 - without
+            it this inner area can't actually shrink to scroll (same fix as
+            Rapports' table container). */}
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[75vh]">
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+            {(clientDupes.length > 0 || coachDupes.length > 0) && (
+              <div className="space-y-1.5">
+                {clientDupes.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-500">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <span>Client possiblement déjà existant : {clientDupes.map((d) => fullName(d.contact)).join(", ")}</span>
+                  </div>
+                )}
+                {coachDupes.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-600">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <span>Coach/unité déjà visé par : {coachDupes.map((d) => fullName(d.contact)).join(", ")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Prénom">
+                <TextInput ref={firstFieldRef} value={draft.prenom} onChange={(e) => update("prenom", e.target.value)} required />
+              </Field>
+              <Field label="Nom">
+                <TextInput value={draft.nom} onChange={(e) => update("nom", e.target.value)} />
+              </Field>
+              <Field label="Téléphone">
+                <TextInput value={draft.telephone} onChange={(e) => update("telephone", e.target.value)} />
+              </Field>
+              <Field label="Courriel">
+                <TextInput type="email" value={draft.email} onChange={(e) => update("email", e.target.value)} />
+              </Field>
+              <Field label="Ville">
+                <TextInput value={draft.ville} onChange={(e) => update("ville", e.target.value)} />
+              </Field>
+              <Field label="Code postal">
+                <TextInput value={draft.code_postal} onChange={(e) => update("code_postal", e.target.value)} />
+              </Field>
+              <Field label="Type de client">
+                <Select
+                  value={draft.type_contact}
+                  onChange={(e) => update("type_contact", e.target.value as typeof draft.type_contact)}
                 >
-                  Confirmer
-                </button>
+                  <option value="particulier">Particulier</option>
+                  <option value="entreprise">Entreprise</option>
+                  <option value="concessionnaire">Concessionnaire</option>
+                </Select>
+              </Field>
+              <Field label="Représentant">
+                <Select value={draft.owner_id} onChange={(e) => update("owner_id", e.target.value)}>
+                  <option value="">Non assigné</option>
+                  {profiles
+                    .filter((p) => !p.is_system_account && p.role !== "admin")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nom || p.email}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+              <Field label="Source">
+                <TextInput list="source-suggestions-new" value={draft.source} onChange={(e) => update("source", e.target.value)} />
+                <datalist id="source-suggestions-new">
+                  {SOURCE_SUGGESTIONS.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+              </Field>
+              <Field label="Niveau d'intérêt">
+                <Select value={draft.niveau_interet} onChange={(e) => update("niveau_interet", e.target.value)}>
+                  <option value="">—</option>
+                  {INTERETS.map((i) => (
+                    <option key={i.v} value={i.v}>
+                      {i.v}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {/* sm:col-span-2, not a bare col-span-2 - at grid-cols-1 (below
+                  640px) an unconditional span-2 forces CSS Grid to create an
+                  implicit second column track to satisfy it, which then
+                  squeezes every OTHER field (auto-placed in column 1 only)
+                  down to that implicit track's width instead of the full
+                  row - confirmed via getComputedStyle, not assumed. Only
+                  spans 2 once sm:grid-cols-2 actually exists. */}
+              <Field label="Coach visé" className="sm:col-span-2">
+                <TextInput value={draft.coach_vise} onChange={(e) => update("coach_vise", e.target.value)} />
+              </Field>
+            </div>
+
+            <Field label="Notes">
+              <TextArea value={draft.note} onChange={(e) => update("note", e.target.value)} rows={3} />
+            </Field>
+
+            {error && <ErrorBanner message={error} />}
+          </div>
+
+          {/* Footer - a plain flex sibling below the scroll area, never
+              overlapping it, so it's visible without scrolling regardless
+              of form length or keyboard state (when the keyboard is closed
+              - with it open, behavior depends on the device/browser, not
+              guaranteed here; no visualViewport handling added).
+              pb-[calc(...)] mirrors page.tsx's mobile tab bar
+              (pb-[env(safe-area-inset-bottom)]) - combined with the base
+              0.75rem instead of replacing it, so "Créer le client" never
+              sits under an iPhone's home-indicator area. */}
+          <div className="shrink-0 border-t border-border/15 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+            {pendingClose ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <p className="text-sm text-text">Fermer sans enregistrer ? Les informations saisies seront perdues.</p>
+                <div className="flex gap-2 justify-end shrink-0">
+                  {/* Focused on arming (see the effect above) - Annuler, not
+                      Confirmer, so an accidental Enter doesn't discard the draft. */}
+                  <button
+                    ref={cancelInBannerRef}
+                    type="button"
+                    onClick={() => setPendingClose(false)}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={reallyClose}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90"
+                  >
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setPendingClose(false)}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text"
+                  onClick={attemptClose}
+                  className="text-xs font-medium px-4 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text"
                 >
                   Annuler
                 </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
+                >
+                  {submitting && <Spinner size={11} />}
+                  {submitting ? "Création…" : "Créer le client"}
+                </button>
               </div>
-            </div>
-          )}
-
-          {(clientDupes.length > 0 || coachDupes.length > 0) && (
-            <div className="space-y-1.5">
-              {clientDupes.length > 0 && (
-                <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-500">
-                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                  <span>Client possiblement déjà existant : {clientDupes.map((d) => fullName(d.contact)).join(", ")}</span>
-                </div>
-              )}
-              {coachDupes.length > 0 && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-600">
-                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                  <span>Coach/unité déjà visé par : {coachDupes.map((d) => fullName(d.contact)).join(", ")}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Prénom">
-              <TextInput ref={firstFieldRef} value={draft.prenom} onChange={(e) => update("prenom", e.target.value)} required />
-            </Field>
-            <Field label="Nom">
-              <TextInput value={draft.nom} onChange={(e) => update("nom", e.target.value)} />
-            </Field>
-            <Field label="Téléphone">
-              <TextInput value={draft.telephone} onChange={(e) => update("telephone", e.target.value)} />
-            </Field>
-            <Field label="Courriel">
-              <TextInput type="email" value={draft.email} onChange={(e) => update("email", e.target.value)} />
-            </Field>
-            <Field label="Ville">
-              <TextInput value={draft.ville} onChange={(e) => update("ville", e.target.value)} />
-            </Field>
-            <Field label="Code postal">
-              <TextInput value={draft.code_postal} onChange={(e) => update("code_postal", e.target.value)} />
-            </Field>
-            <Field label="Type de client">
-              <Select
-                value={draft.type_contact}
-                onChange={(e) => update("type_contact", e.target.value as typeof draft.type_contact)}
-              >
-                <option value="particulier">Particulier</option>
-                <option value="entreprise">Entreprise</option>
-                <option value="concessionnaire">Concessionnaire</option>
-              </Select>
-            </Field>
-            <Field label="Représentant">
-              <Select value={draft.owner_id} onChange={(e) => update("owner_id", e.target.value)}>
-                <option value="">Non assigné</option>
-                {profiles
-                  .filter((p) => !p.is_system_account && p.role !== "admin")
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nom || p.email}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-            <Field label="Source">
-              <TextInput list="source-suggestions-new" value={draft.source} onChange={(e) => update("source", e.target.value)} />
-              <datalist id="source-suggestions-new">
-                {SOURCE_SUGGESTIONS.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label="Niveau d'intérêt">
-              <Select value={draft.niveau_interet} onChange={(e) => update("niveau_interet", e.target.value)}>
-                <option value="">—</option>
-                {INTERETS.map((i) => (
-                  <option key={i.v} value={i.v}>
-                    {i.v}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Coach visé" className="col-span-2">
-              <TextInput value={draft.coach_vise} onChange={(e) => update("coach_vise", e.target.value)} />
-            </Field>
-          </div>
-
-          <Field label="Notes">
-            <TextArea value={draft.note} onChange={(e) => update("note", e.target.value)} rows={3} />
-          </Field>
-
-          {error && <ErrorBanner message={error} />}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={attemptClose}
-              className="text-xs font-medium px-4 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
-            >
-              {submitting && <Spinner size={11} />}
-              {submitting ? "Création…" : "Créer le client"}
-            </button>
+            )}
           </div>
         </form>
       </div>
