@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Printer } from "lucide-react";
+import { AlertTriangle, FileText, Printer } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Spinner } from "../ui/Spinner";
 import { ErrorBanner } from "../ui/ErrorBanner";
@@ -98,7 +98,14 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
 
       {rows && range && !loading && (
         <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-          <div className="report-print flex-1 rounded-xl border border-border/15 bg-surface p-5 space-y-4">
+          {/* min-w-0: a flex child's default min-width is auto (its content's
+              natural width), not 0 - without this, the table's own
+              overflow-x-auto below never actually engages at sm:flex-row
+              widths where the table doesn't fit (e.g. 768px) and the whole
+              PAGE stretches to the table's width instead of just this card
+              scrolling internally. Pre-existing bug, found while verifying
+              this zone's own "table scrolls, page doesn't" requirement. */}
+          <div className="report-print flex-1 min-w-0 rounded-xl border border-border/15 bg-surface p-5 space-y-4">
             <div>
               <h2 className="text-sm font-semibold text-text">
                 Rapport d&apos;équipe — {period ? PERIOD_LABELS[period] : ""}
@@ -109,40 +116,56 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
               </p>
             </div>
 
-            <div className="rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
-              Rapport strictement factuel — aucune interprétation générée par le système. Seuil de stagnation actuel :{" "}
-              {STAGNATION_THRESHOLD_DAYS} jours sans changement d&apos;étape — une estimation de départ, ajustable,
-              pas encore calculée sur un vrai historique de ventes fermées.
+            {/* Same border-orange/30 bg-orange/5 text-orange as before -
+                untouched, so its contrast against bg-surface (2.91:1 light,
+                5.30:1 dark, measured against the real classes) stays exactly
+                what it already was. Icon added purely for scannability, not
+                to compensate for contrast - it doesn't change the text/
+                background ratio at all. */}
+            <div className="flex items-start gap-2 rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs text-orange">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>
+                Rapport strictement factuel — aucune interprétation générée par le système. Seuil de stagnation
+                actuel : {STAGNATION_THRESHOLD_DAYS} jours sans changement d&apos;étape — une estimation de départ,
+                ajustable, pas encore calculée sur un vrai historique de ventes fermées. Les dossiers importés
+                n&apos;ont pas de date d&apos;entrée dans l&apos;étape : leur ancienneté est comptée depuis leur
+                création, ce qui gonfle ce chiffre pour l&apos;instant.
+              </span>
             </div>
 
             {rows.length === 0 ? (
-              <p className="text-sm text-textSoft text-center py-10">Aucune donnée pour cette période.</p>
+              <div className="flex flex-col items-center justify-center gap-2 py-10 border border-dashed border-border/15 rounded-lg text-sm text-textSoft">
+                <FileText size={16} className="text-textSoft/60" />
+                Aucune donnée pour cette période.
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-textSoft border-b border-border/15">
-                      <th className="py-2 pr-3 font-medium">Représentant</th>
-                      <th className="py-2 pr-3 font-medium">Délai moyen 1er contact</th>
-                      <th className="py-2 pr-3 font-medium">Deals stagnants (≥{STAGNATION_THRESHOLD_DAYS}j)</th>
-                      <th className="py-2 pr-3 font-medium">Relances en retard (période)</th>
-                      <th className="py-2 font-medium">Répartition par étape (actif)</th>
+                    <tr className="text-left text-xs text-textSoft bg-surface2 border-b border-border/15">
+                      <th className="py-2 pr-3 pl-2 font-medium rounded-l-lg">Représentant</th>
+                      <th className="py-2 pr-3 font-medium whitespace-nowrap">Délai moyen 1er contact</th>
+                      <th className="py-2 pr-3 font-medium whitespace-nowrap">
+                        Deals stagnants (≥{STAGNATION_THRESHOLD_DAYS}j)
+                      </th>
+                      <th className="py-2 pr-3 font-medium whitespace-nowrap">Relances en retard (période)</th>
+                      <th className="py-2 pr-2 font-medium rounded-r-lg">Répartition par étape (actif)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.label} className="border-b border-border/10 last:border-0 align-top">
-                        <td className="py-2.5 pr-3 font-medium text-text">{row.label}</td>
-                        <td className="py-2.5 pr-3 text-text">
+                        <td className="py-2.5 pr-3 pl-2 font-medium text-text whitespace-nowrap">{row.label}</td>
+                        <td className="py-2.5 pr-3 text-text tabular-nums whitespace-nowrap">
                           {row.avgFirstContactDays !== null
                             ? `${row.avgFirstContactDays.toFixed(1)} j (${row.firstContactSampleSize} deal${
                                 row.firstContactSampleSize > 1 ? "s" : ""
                               })`
                             : "— (aucun deal créé dans la période)"}
                         </td>
-                        <td className="py-2.5 pr-3 text-text">{row.stagnantCount}</td>
-                        <td className="py-2.5 pr-3 text-text">{row.overdueFollowUpsInPeriod}</td>
-                        <td className="py-2.5 text-textSoft text-xs">
+                        <td className="py-2.5 pr-3 text-text tabular-nums">{row.stagnantCount}</td>
+                        <td className="py-2.5 pr-3 text-text tabular-nums">{row.overdueFollowUpsInPeriod}</td>
+                        <td className="py-2.5 pr-2 text-textSoft text-xs">
                           {openStages
                             .filter((s) => (row.stageCounts[s.id] ?? 0) > 0)
                             .map((s) => `${s.label}: ${row.stageCounts[s.id]}`)
