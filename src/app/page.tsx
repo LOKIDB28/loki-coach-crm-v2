@@ -7,7 +7,9 @@ import {
   Archive,
   BarChart3,
   CalendarDays,
+  DatabaseBackup,
   Download,
+  FileSpreadsheet,
   FileText,
   Kanban,
   LayoutGrid,
@@ -684,33 +686,54 @@ function DashboardPageInner() {
               <span className="hidden sm:inline">Nouveau client</span>
             </button>
 
-            {/* Desktop-only secondary actions - folded into the "…" menu on mobile */}
+            {/* Desktop-only secondary actions - folded into the "…" menu on
+                mobile. Icon-only below xl (1280px), full label from xl up:
+                main already overflowed horizontally at 640-768px before this
+                zone (measured: ~1023px of content needed, "Se déconnecter"
+                pushed off-screen) - this is the fix, not a style choice.
+                aria-label + title carry the full label while the label text
+                itself is hidden; whitespace-nowrap keeps each button's own
+                label from wrapping to a second line at any width in between
+                (measured clean at 640/768/1024/1280, both themes). */}
             <button
               type="button"
               onClick={loadAll}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Rafraîchir"
+              title="Rafraîchir"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 whitespace-nowrap"
             >
-              <RefreshCw size={14} /> Rafraîchir
+              <RefreshCw size={14} /> <span className="hidden xl:inline">Rafraîchir</span>
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Exporter (Excel)"
+              title="Exporter (Excel)"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 whitespace-nowrap"
             >
-              <Download size={14} /> Exporter (Excel)
+              {/* FileSpreadsheet, not Download - distinct from
+                  DatabaseBackup below so the two never read as the same
+                  icon once both collapse to icon-only. */}
+              <FileSpreadsheet size={14} /> <span className="hidden xl:inline">Exporter (Excel)</span>
             </button>
             <button
               type="button"
               onClick={handleExport}
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Sauvegarde complète (JSON)"
+              title="Sauvegarde complète (JSON)"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 whitespace-nowrap"
             >
-              Sauvegarde complète (JSON)
+              {/* Had no icon at all before - needed one to collapse to
+                  icon-only like its siblings. */}
+              <DatabaseBackup size={14} /> <span className="hidden xl:inline">Sauvegarde complète (JSON)</span>
             </button>
             <Link
               href="/settings"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Paramètres"
+              title="Paramètres"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 whitespace-nowrap"
             >
-              <Settings size={14} /> Paramètres
+              <Settings size={14} /> <span className="hidden xl:inline">Paramètres</span>
             </Link>
             {/* Rapport d'équipe - route standalone, distincte de LOKI
                 Intelligence (deux espaces distincts pour le client, pas
@@ -718,19 +741,32 @@ function DashboardPageInner() {
                 aucune restriction de rôle. */}
             <Link
               href="/rapports"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Rapports"
+              title="Rapports"
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150 whitespace-nowrap"
             >
-              <FileText size={14} /> Rapports
+              <FileText size={14} /> <span className="hidden xl:inline">Rapports</span>
             </Link>
-            {/* Deliberately distinct from the other secondary actions - the
-                one destination button we want to pop instead of blend in. */}
+
+            {/* Visual grouping only (zone A) - separates utility/nav actions
+                from the one destination link that's meant to pop instead of
+                blend in, so "Nouveau client" stays the single filled/teal
+                action instead of competing with this one for attention. No
+                reorder, no label change, no color change: still the same
+                INTELLIGENCE_YELLOW solid fill + onyx text as always - just
+                without its icon here specifically, to reduce how much it
+                reads as a second "action with icon" next to Nouveau client.
+                The mobile "..." menu's own row (lot 3, untouched) keeps its
+                icon. */}
+            <div className="hidden sm:block w-px self-stretch bg-border/15" />
             <Link
               href="/intelligence"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg text-onyx hover:opacity-90 transition-opacity duration-150"
+              className="hidden sm:flex items-center text-xs font-medium px-3 py-2 rounded-lg text-onyx hover:opacity-90 transition-opacity duration-150"
               style={{ backgroundColor: INTELLIGENCE_YELLOW }}
             >
-              <BarChart3 size={14} /> LOKI Intelligence
+              LOKI Intelligence
             </Link>
+            <div className="hidden sm:block w-px self-stretch bg-border/15" />
 
             {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde
                 JSON, Paramètres, Rapports, LOKI Intelligence, récap et
