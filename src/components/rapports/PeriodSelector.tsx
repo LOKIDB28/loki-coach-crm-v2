@@ -39,10 +39,15 @@ export function PeriodSelector({
             type="button"
             disabled={loading}
             onClick={() => onSelect(opt.key)}
-            className={`text-xs font-medium px-3 py-2 rounded-lg border transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none ${
+            // Same pill classes as RepresentativeTabs' TabButton (rounded-full,
+            // min-h-11, px-3.5 py-1.5, border) - this is the same toggle
+            // grammar, not a second one invented in parallel. Only addition:
+            // the disabled: pair, which TabButton doesn't need (it has no
+            // loading state of its own).
+            className={`shrink-0 min-h-11 text-xs font-medium rounded-full px-3.5 py-1.5 border transition-colors disabled:opacity-50 disabled:pointer-events-none ${
               period === opt.key
-                ? "border-teal/40 bg-teal/10 text-teal"
-                : "border-border/20 text-textSoft hover:text-text hover:border-teal/40"
+                ? "border-teal bg-teal text-white"
+                : "border-border/15 bg-surface text-textSoft hover:border-teal/40 hover:text-text"
             }`}
           >
             {opt.label}
