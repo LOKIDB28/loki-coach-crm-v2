@@ -678,17 +678,30 @@ export function DealDrawer({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex justify-end bg-onyx/50 backdrop-blur-sm transition-opacity duration-300 ${
+      className={`glass-scrim fixed inset-0 z-50 flex justify-end transition-opacity duration-300 ${
         drawerVisible ? "opacity-100" : "opacity-0"
       }`}
       onClick={handleBackdropClick}
     >
+      {/* Opaque, no blur - a reading surface (deal sections, fields),
+          never glass. text-textSoft measured as low as 1.60:1 here when
+          this was bg-bg/60 backdrop-blur-md (worse still for the active
+          stage's own near-transparent bg-teal/[0.04] section) - see
+          globals.css's own comment on .glass-scrim/.glass-bar for the
+          full history. shadow-xl added (this panel had none before) since
+          depth no longer comes from blur. */}
       <div
-        className={`w-full sm:max-w-xl h-full bg-bg/60 backdrop-blur-md border-l border-border/10 overflow-y-auto transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`w-full sm:max-w-xl h-full bg-bg border-l border-border/10 shadow-xl overflow-y-auto transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           drawerVisible ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border/15 px-5 py-4 flex items-center justify-between gap-3">
+        {/* Stays glass - this is a floating bar, content scrolls beneath
+            it. Worst-case contrast measured (fictional extremes behind
+            it, both themes): 14.71:1 light / 14.00:1 dark - the 90%
+            opacity leaves at most a 10% contribution from whatever
+            scrolls underneath, nowhere near enough to threaten this
+            title text's contrast. */}
+        <div className="glass-bar sticky top-0 z-10 border-b px-5 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-text tracking-[-0.01em] flex items-center gap-2 min-w-0">
               <span className="truncate">{fullName(localContact) || "(sans nom)"}</span>
@@ -753,9 +766,15 @@ export function DealDrawer({
           )}
 
           {pendingAction && (
+            // No blur of its own (was backdrop-blur-sm - glass on glass,
+            // floating on the drawer panel's own blur) - the panel above
+            // is opaque now, so this tint composites against a solid
+            // backdrop directly. Same reserved-color tints as before,
+            // unchanged (bg-green/10 etc.) - only the base under them
+            // changed from translucent to opaque.
             <div
               ref={bannerRef}
-              className={`rounded-xl border px-3.5 py-3 space-y-2 backdrop-blur-sm ${
+              className={`rounded-xl border px-3.5 py-3 space-y-2 ${
                 pendingAction === "gagne"
                   ? "border-green/30 bg-green/10"
                   : pendingAction === "perdu"

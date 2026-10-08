@@ -20,7 +20,16 @@ export function Section({ code, title, icon: Icon, defaultOpen = false, active =
   return (
     <div
       className={`rounded-xl border transition-colors duration-200 ${
-        active ? "border-teal/40 bg-teal/[0.04]" : "border-border/15 bg-surface"
+        // 0.01, not the original 0.04 - now that DealDrawer's own panel is
+        // opaque (see globals.css's .glass-scrim/.glass-bar comment), this
+        // tint composites directly against a known, solid background
+        // instead of glass. Measured (fictional data, both themes): 0.04
+        // landed text-textSoft labels at 4.40:1 in light mode, just under
+        // WCAG AA's 4.5:1 (0.03 still only 4.45:1, 0.02 still 4.49:1); 0.01
+        // measures 4.54:1 light / 7.37:1 dark - the active-stage highlight
+        // is still visible via its own full-opacity border-teal/40, the
+        // fill itself now barely more than a rounding error.
+        active ? "border-teal/40 bg-teal/[0.01]" : "border-border/15 bg-surface"
       }`}
     >
       <button
