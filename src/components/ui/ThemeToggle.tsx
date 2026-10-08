@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useEffectiveTheme } from "@/lib/use-effective-theme";
 
@@ -17,6 +18,21 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const { effective, toggle } = useEffectiveTheme();
   const label = effective === "dark" ? "Passer en mode clair" : "Passer en mode sombre";
 
+  // On Paramètres/Rapports/LOKI Intelligence (whose header renders
+  // unconditionally, unlike the dashboard's own loading-gated header), the
+  // server can't read localStorage/prefers-color-scheme at request time, so
+  // the very first paint would otherwise always show the light icon even
+  // when the real theme is dark - a brief wrong-icon flash right as
+  // hydration corrects it. Gating the icon itself (not the button, which
+  // keeps its full size throughout - no layout shift) behind `mounted`
+  // means nothing is ever shown except the right icon: the icons are freshly
+  // inserted into the DOM on that first mounted render, not transitioned
+  // into from a previous frame, so no fade/rotate plays - that animation
+  // only fires on an actual click afterward, when effective flips on an
+  // already-mounted pair of icons.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <button
       type="button"
@@ -25,25 +41,23 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       title={label}
       className={`flex items-center justify-center min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-2 sm:py-2 rounded-lg text-textSoft hover:text-text transition-colors duration-150 ${className}`}
     >
-      {/* Both icons always mounted, cross-faded + rotated via opacity/
-          transform - not a conditional re-mount, which would restart the
-          transition from nothing instead of animating between the two.
-          ~200ms, no explicit motion-reduce override needed: the blanket
-          prefers-reduced-motion rule in globals.css already forces every
-          transition-duration to 0.01ms. */}
       <span className="relative inline-flex items-center justify-center w-4 h-4">
-        <Sun
-          size={16}
-          className={`absolute transition-[transform,opacity] duration-200 ${
-            effective === "dark" ? "opacity-0 rotate-90 scale-75" : "opacity-100 rotate-0 scale-100"
-          }`}
-        />
-        <Moon
-          size={16}
-          className={`absolute transition-[transform,opacity] duration-200 ${
-            effective === "dark" ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-75"
-          }`}
-        />
+        {mounted && (
+          <>
+            <Sun
+              size={16}
+              className={`absolute transition-[transform,opacity] duration-200 ${
+                effective === "dark" ? "opacity-0 rotate-90 scale-75" : "opacity-100 rotate-0 scale-100"
+              }`}
+            />
+            <Moon
+              size={16}
+              className={`absolute transition-[transform,opacity] duration-200 ${
+                effective === "dark" ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-75"
+              }`}
+            />
+          </>
+        )}
       </span>
     </button>
   );
