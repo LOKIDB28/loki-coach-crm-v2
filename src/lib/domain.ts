@@ -34,9 +34,17 @@ export function stageIcon(code: string): LucideIcon {
   return STAGE_ICONS[code] ?? FileText;
 }
 
-/** Suggested values for the free-text contacts.source field - not DB-enforced. */
+/**
+ * Suggested values for the free-text contacts.source field - not
+ * DB-enforced. "Website", not "Site web" - production data has 32 contacts
+ * spelled "Website" against only 2 as "Site web" (confirmed via a read-only
+ * query, 2026-10-08); the fixed suggestion now matches the spelling people
+ * actually use, so typing it proposes the existing one instead of creating
+ * a near-duplicate. The 2 existing "Site web" rows are untouched - this
+ * only changes what's suggested going forward, never rewrites stored data.
+ */
 export const SOURCE_SUGGESTIONS = [
-  "Site web",
+  "Website",
   "Salon / Exposition",
   "Référence client",
   "Réseaux sociaux",
@@ -51,6 +59,134 @@ export const SOURCE_SUGGESTIONS = [
   "PGA",
   "Golf",
 ] as const;
+
+/**
+ * Historical, high-volume channel values already present in contacts.source
+ * (confirmed via a read-only production query, 2026-10-08), excluded from
+ * "Sources récentes" (SourceCombobox) alongside SOURCE_SUGGESTIONS itself,
+ * so the ~260 "Facebook" contacts (etc.) don't flood a list meant to
+ * surface one-off events. "Facebook" and "Website" are already in
+ * SOURCE_SUGGESTIONS and listed here too only for this constant's own
+ * clarity/self-documentation - the union naturally dedupes both. "Site
+ * web" stays here deliberately even though it's no longer a fixed
+ * suggestion (SOURCE_SUGGESTIONS now offers "Website" instead) - its 2
+ * historical rows are still real production data, still excluded from
+ * "Sources récentes" the same way.
+ */
+export const HISTORICAL_HIGH_VOLUME_SOURCES = ["Facebook", "Website", "TBD", "Reference", "Show", "TMCS", "Site web"];
+
+const SOURCE_DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
+
+/** Case/accent/whitespace-insensitive comparison key for a source value - "Nascar", "nascar ", "NASCAR" all normalize the same. */
+export function normalizeSourceKey(s: string): string {
+  return s.trim().toLowerCase().normalize("NFD").replace(SOURCE_DIACRITICS_RE, "").replace(/\s+/g, "");
+}
+
+const REFERENCE_INTERNE_KEY = normalizeSourceKey("Référence interne");
+
+const RECENT_SOURCES_WINDOW_DAYS = 90;
+const RECENT_SOURCES_MAX = 6;
+
+/**
+ * Up to 6 non-fixed source values used on a contact created in the last 90
+ * days, most recent first - distinct from SOURCE_SUGGESTIONS (the fixed
+ * "Canaux" group) and from HISTORICAL_HIGH_VOLUME_SOURCES, and from any
+ * value starting with "Référence interne" (that case is already handled by
+ * the dedicated "Référé par (interne)" picker, not a one-off event - see
+ * DealDrawer Section 1). Anchored to the CONTACT's created_at, not the
+ * deal's: source lives on the contact, and conceptually means "when this
+ * person arrived through this channel" - today every contact is created in
+ * the same transaction as its first deal (createContactAndDeal), so the two
+ * timestamps are identical in practice, but contact.created_at stays the
+ * right anchor if a future feature ever attaches a new deal to an existing
+ * contact.
+ */
+export function getRecentSources(deals: DealWithContact[], now: Date): string[] {
+  const excluded = new Set([...SOURCE_SUGGESTIONS, ...HISTORICAL_HIGH_VOLUME_SOURCES].map(normalizeSourceKey));
+  const cutoff = now.getTime() - RECENT_SOURCES_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+  // Most recent contact.created_at wins per normalized source key - a
+  // source used by several recent contacts appears once, sorted by its own
+  // most recent occurrence.
+  const latestBySource = new Map<string, { label: string; ts: number }>();
+  for (const d of deals) {
+    const source = d.contact.source;
+    if (!source) continue;
+    const key = normalizeSourceKey(source);
+    if (excluded.has(key) || key.startsWith(REFERENCE_INTERNE_KEY)) continue;
+    const ts = new Date(d.contact.created_at).getTime();
+    if (ts < cutoff) continue;
+    const existing = latestBySource.get(key);
+    if (!existing || ts > existing.ts) latestBySource.set(key, { label: source, ts });
+  }
+
+  return [...latestBySource.values()]
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, RECENT_SOURCES_MAX)
+    .map((e) => e.label);
+}
+
+export interface SourceCount {
+  /** null = the "Sans source" bucket. */
+  source: string | null;
+  label: string;
+  count: number;
+}
+
+/** Every distinct contacts.source value among the given deals, with a count each - alphabetical, "Sans source" pinned first when present. */
+export function getDistinctSourcesWithCounts(deals: DealWithContact[]): SourceCount[] {
+  const counts = new Map<string, { label: string; count: number }>();
+  let noSourceCount = 0;
+  for (const d of deals) {
+    const source = d.contact.source;
+    if (!source || !source.trim()) {
+      noSourceCount++;
+      continue;
+    }
+    const key = normalizeSourceKey(source);
+    const existing = counts.get(key);
+    if (existing) existing.count++;
+    else counts.set(key, { label: source, count: 1 });
+  }
+  const result: SourceCount[] = [...counts.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, "fr"))
+    .map((v) => ({ source: v.label, label: v.label, count: v.count }));
+  if (noSourceCount > 0) result.unshift({ source: null, label: "Sans source", count: noSourceCount });
+  return result;
+}
+
+/** Normalized-equal (not substring) match against every known source - "propose the existing spelling" before creating a near-duplicate. Null if `typed` is an exact match already, or matches nothing. */
+export function findMatchingExistingSource(typed: string, allKnownSources: string[]): string | null {
+  const key = normalizeSourceKey(typed);
+  if (!key) return null;
+  for (const known of allKnownSources) {
+    if (known === typed) return null;
+    if (normalizeSourceKey(known) === key) return known;
+  }
+  return null;
+}
+
+/**
+ * Does this contact's source belong to the filter bucket `activeFilter`
+ * selects? `activeFilter` is always one of the canonical labels
+ * getDistinctSourcesWithCounts produced (or null/"" for "Toutes"/"Sans
+ * source") - but a contact's own stored source can be a case/accent/
+ * whitespace variant of that same canonical label (that's the whole reason
+ * getDistinctSourcesWithCounts groups by normalizeSourceKey in the first
+ * place, picking one representative label to display per group). Matching
+ * here by exact string equality instead of the same normalized key would
+ * silently under-count: the dropdown's own number would include every
+ * variant, while the filtered list would only ever show the one exact
+ * spelling. Used by both filteredDeals and kanbanDeals (page.tsx) so the
+ * two can never drift apart from each other either.
+ */
+export function matchesSourceFilter(contactSource: string | null, activeFilter: string | null): boolean {
+  if (activeFilter === null) return true;
+  const hasSource = contactSource !== null && contactSource.trim() !== "";
+  if (activeFilter === "") return !hasSource;
+  if (!hasSource) return false;
+  return normalizeSourceKey(contactSource) === normalizeSourceKey(activeFilter);
+}
 
 // Fixed display order for the 5 real internal team members, confirmed in
 // conversation - "Tous" (RepresentativeTabs) always sorts first regardless,
