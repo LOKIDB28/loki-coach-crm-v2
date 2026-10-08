@@ -27,6 +27,7 @@ import { SourceBreakdownChart } from "@/components/intelligence/SourceBreakdownC
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { WidgetInfoTooltip } from "@/components/intelligence/WidgetInfoTooltip";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type {
   DealWithContact,
   ExchangeRateWithAuthor,
@@ -135,6 +136,7 @@ export default function IntelligencePage() {
                 </button>
               ))}
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>

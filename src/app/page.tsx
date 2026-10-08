@@ -14,11 +14,13 @@ import {
   Kanban,
   LayoutGrid,
   LogOut,
+  Moon,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
   Settings,
+  Sun,
   Table2,
   X,
 } from "lucide-react";
@@ -58,6 +60,8 @@ import { DealHoverContent } from "@/components/DealHoverContent";
 import { HoverTooltip } from "@/components/HoverTooltip";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useEffectiveTheme } from "@/lib/use-effective-theme";
 import { POPOVER_CHROME } from "@/lib/ui";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NewDealModal } from "@/components/NewDealModal";
@@ -137,6 +141,11 @@ function DashboardPageInner() {
   const [viewMode, setViewMode] = useState<ViewMode>("pipeline");
   // Independent from showArchived on purpose - see lib/view.ts.
   const [viewLayout, setViewLayout] = useState<ViewLayout>("grid");
+
+  // Shared with ThemeToggle (the desktop header button) - the mobile "..."
+  // menu's own row below needs the same effective state + toggle function,
+  // not a second independent copy of the system-preference listener.
+  const { effective: effectiveTheme, toggle: toggleTheme } = useEffectiveTheme();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -680,7 +689,7 @@ function DashboardPageInner() {
               type="button"
               onClick={() => setNewDealOpen(true)}
               aria-label="Nouveau client"
-              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150"
+              className="flex items-center justify-center gap-1.5 min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 sm:px-3 sm:py-2 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors duration-150 whitespace-nowrap"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">Nouveau client</span>
@@ -768,6 +777,12 @@ function DashboardPageInner() {
             </Link>
             <div className="hidden sm:block w-px self-stretch bg-border/15" />
 
+            {/* Desktop only - same row as the mobile "..." menu's own
+                toggle row below, never both at once. */}
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+
             {/* Mobile-only compact menu: Rafraîchir, Exporter, Sauvegarde
                 JSON, Paramètres, Rapports, LOKI Intelligence, récap et
                 archives toggles - everything that's a separate row or extra
@@ -847,6 +862,20 @@ function DashboardPageInner() {
                   >
                     <BarChart3 size={16} /> LOKI Intelligence
                   </Link>
+                  {/* Same effectiveTheme/toggleTheme as the desktop
+                      ThemeToggle button - never both visible at once
+                      (sm:hidden wrapper around this whole menu). */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 text-sm text-textSoft hover:bg-surface2 hover:text-text"
+                  >
+                    {effectiveTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                    {effectiveTheme === "dark" ? "Mode clair" : "Mode sombre"}
+                  </button>
                   <div className="my-1 border-t border-border/15" />
                   <button
                     type="button"

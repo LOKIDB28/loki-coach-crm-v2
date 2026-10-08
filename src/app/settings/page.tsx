@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { clearStoredThemePreference, getStoredThemePreference } from "@/lib/theme-preference";
 
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -15,6 +17,21 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [feedUrl, setFeedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // null until the effect below runs client-side - getStoredThemePreference
+  // reads localStorage, which doesn't exist during server render. The
+  // "revenir au réglage de l'ordinateur" link only ever needs to appear
+  // after that, so starting hidden (rather than guessing) is correct here,
+  // unlike the anti-flash <head> script's own correctness requirement.
+  const [storedThemePref, setStoredThemePref] = useState<"light" | "dark" | null>(null);
+
+  useEffect(() => {
+    setStoredThemePref(getStoredThemePreference());
+  }, []);
+
+  function handleResetTheme() {
+    clearStoredThemePreference();
+    setStoredThemePref(null);
+  }
 
   useEffect(() => {
     (async () => {
@@ -50,20 +67,43 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/15 bg-surface">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
-            aria-label="Retour au dashboard"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="text-lg font-semibold text-text">Paramètres</h1>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Retour au dashboard"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <h1 className="text-lg font-semibold text-text">Paramètres</h1>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {error && <ErrorBanner message={error} />}
+
+        <section className="bg-surface border border-border/15 rounded-xl p-5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-text mb-1">Apparence</h2>
+            <p className="text-xs text-textSoft">
+              Suit le réglage clair/sombre de l&apos;ordinateur par défaut. Le bouton{" "}
+              <span aria-hidden="true">☀/☾</span> en haut à droite impose un choix manuel, mémorisé sur cet appareil
+              seulement.
+            </p>
+          </div>
+          {storedThemePref && (
+            <button
+              type="button"
+              onClick={handleResetTheme}
+              className="text-xs font-medium text-teal hover:underline"
+            >
+              Revenir au réglage de l&apos;ordinateur
+            </button>
+          )}
+        </section>
 
         <section className="bg-surface border border-border/15 rounded-xl p-5 space-y-4">
           <div>

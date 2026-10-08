@@ -10,6 +10,7 @@ import { computeReportRows, latestStageEntryByDeal, type PeriodRange, type Repor
 import { ReportGenerator } from "@/components/rapports/ReportGenerator";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import type { DealWithContact, PipelineStage, Profile } from "@/lib/types";
 
 /**
@@ -67,15 +68,18 @@ export default function RapportsPage() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/15 bg-surface">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
-            aria-label="Retour au dashboard"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="text-lg font-semibold text-text">Rapports</h1>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center justify-center min-w-11 min-h-11 rounded-lg border border-border/20 text-textSoft hover:text-text hover:border-teal/40 transition-colors duration-150"
+              aria-label="Retour au dashboard"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <h1 className="text-lg font-semibold text-text">Rapports</h1>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 

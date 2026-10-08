@@ -1,5 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { THEME_STORAGE_KEY } from "@/lib/theme-preference";
+
+// Runs synchronously before first paint (a plain <script>, not a module -
+// those are deferred) so a stored manual theme choice applies before any
+// pixel is drawn, never a flash of the wrong theme then a correction.
+// try/catch: a blocked localStorage (private browsing, disabled storage)
+// must never stop the page from rendering - the system's own
+// prefers-color-scheme still applies via globals.css either way, since
+// this script only ever ADDS an attribute, never removes the CSS's own
+// media-query fallback. No CSP is configured in this project (checked
+// next.config.js and middleware.ts) - nothing blocks an inline script here.
+const THEME_INIT_SCRIPT = `(function(){try{var v=localStorage.getItem(${JSON.stringify(
+  THEME_STORAGE_KEY
+)});if(v==="light"||v==="dark"){document.documentElement.setAttribute("data-theme",v);}}catch(e){}})();`;
 
 export const metadata: Metadata = {
   title: "LOKI CRM",
@@ -35,7 +49,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr-CA">
+    // suppressHydrationWarning - this element's own data-theme attribute is
+    // set by THEME_INIT_SCRIPT above, outside React's control and before
+    // hydration; only suppresses mismatch warnings on html itself, not
+    // recursively on its descendants.
+    <html lang="fr-CA" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="bg-bg text-text min-h-screen">{children}</body>
     </html>
   );

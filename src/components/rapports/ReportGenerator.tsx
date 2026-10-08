@@ -118,16 +118,19 @@ export function ReportGenerator({ openStages, onGenerate }: ReportGeneratorProps
 
             {/* Same border-orange/30 bg-orange/5 as before - untouched. The
                 icon keeps text-orange in both themes (unchanged). The text
-                itself now uses AMBER_BANNER_TEXT_LIGHT (theme.ts) in light
-                mode only - text-orange there measured 2.91:1 against this
-                banner's own bg-orange/5-on-bg-surface background, below
-                WCAG AA's 4.5:1 for body text; the darker shade measures
-                4.90:1 against the same real background. dark:text-orange
-                restores the original color in dark mode, where text-orange
-                already measured 5.30:1 - no change needed or made there. */}
+                itself reads --amber-banner-text (globals.css) - a CSS
+                variable, not a Tailwind dark: class, so it also follows a
+                manual theme override correctly (dark: alone only ever
+                followed the system setting - see the theme-toggle PR for
+                why this was converted rather than switching darkMode to a
+                class/selector strategy for just these two spots). Light:
+                194 65 12 (4.90:1 against this banner's real background,
+                text-orange alone measured 2.91:1, below WCAG AA's 4.5:1).
+                Dark: 255 92 52, the ordinary brand orange, already 5.30:1 -
+                unchanged either way this renders. */}
             <div className="flex items-start gap-2 rounded-lg border border-orange/30 bg-orange/5 px-3 py-2 text-xs">
               <AlertTriangle size={14} className="shrink-0 mt-0.5 text-orange" />
-              <span className="text-[#C2410C] dark:text-orange">
+              <span className="text-[rgb(var(--amber-banner-text))]">
                 Rapport strictement factuel — aucune interprétation générée par le système. Seuil de stagnation
                 actuel : {STAGNATION_THRESHOLD_DAYS} jours sans changement d&apos;étape — une estimation de départ,
                 ajustable, pas encore calculée sur un vrai historique de ventes fermées. Les dossiers importés
