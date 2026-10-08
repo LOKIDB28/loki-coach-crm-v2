@@ -15,6 +15,14 @@
  * would have zero contrast against the page).
  */
 :root {
+  /* Native controls (date-picker calendar, <select>, scrollbars) were
+     measured (getComputedStyle(document.documentElement).colorScheme) as
+     "normal" today regardless of OS setting - i.e. always light-styled,
+     even under system dark mode. Declaring this explicitly is a separate,
+     voluntary visible change from this point on: those controls now follow
+     the active theme (system or manual) instead of always rendering light -
+     see the PR description for the full list. */
+  color-scheme: light;
   --bg: 249 249 249; /* paperDim */
   --surface: 255 255 255; /* paper */
   --surface-2: 249 249 249; /* paperDim */
@@ -42,6 +50,7 @@
    getComputedStyle, so the two blocks can't silently drift apart. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: 17 17 17; /* onyx */
     --surface: 27 27 27; /* onyx + ~6% paper, for elevation */
     --surface-2: 34 34 34; /* onyx + ~9% paper */
@@ -56,6 +65,7 @@
    dark regardless of the system setting. Byte-identical to the system-dark
    block above - see its own comment. */
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: 17 17 17;
   --surface: 27 27 27;
   --surface-2: 34 34 34;
