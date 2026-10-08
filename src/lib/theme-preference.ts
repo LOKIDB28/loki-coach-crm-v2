@@ -18,6 +18,31 @@
 export const THEME_STORAGE_KEY = "loki-theme";
 export type ThemePreference = "light" | "dark";
 
+// setStoredThemePreference/clearStoredThemePreference can be called from any
+// of several independent component instances on the same page at once (the
+// header's ThemeToggle, the mobile "..." menu's own row, Settings' "revenir
+// au réglage de l'ordinateur" link) - each only ever updates ITS OWN
+// in-memory state directly. Without this event, every other instance keeps
+// showing its last-known value until something else (e.g. a system
+// prefers-color-scheme change) happens to re-trigger it. The native
+// "storage" event doesn't help here - it only fires in OTHER tabs/windows,
+// never in the same document that made the change.
+const THEME_CHANGE_EVENT = "loki-theme-change";
+
+function notifyThemeChange() {
+  try {
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+  } catch {
+    // window unavailable or dispatch blocked - nothing to notify.
+  }
+}
+
+/** Subscribes to any in-page theme change (any instance's toggle/reset) - returns an unsubscribe function. */
+export function subscribeThemeChange(callback: () => void): () => void {
+  window.addEventListener(THEME_CHANGE_EVENT, callback);
+  return () => window.removeEventListener(THEME_CHANGE_EVENT, callback);
+}
+
 export function getStoredThemePreference(): ThemePreference | null {
   try {
     const v = localStorage.getItem(THEME_STORAGE_KEY);
@@ -35,6 +60,7 @@ export function setStoredThemePreference(pref: ThemePreference) {
     // this session, it just won't survive a reload.
   }
   document.documentElement.setAttribute("data-theme", pref);
+  notifyThemeChange();
 }
 
 /** "Revenir au réglage de l'ordinateur" - drops back to the system's own prefers-color-scheme, live, no reload. */
@@ -45,6 +71,7 @@ export function clearStoredThemePreference() {
     // Nothing was persisted anyway if this throws.
   }
   document.documentElement.removeAttribute("data-theme");
+  notifyThemeChange();
 }
 
 export function systemPrefersDark(): boolean {

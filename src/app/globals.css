@@ -229,6 +229,12 @@ button:active {
     --border: 107 114 128 !important;
     --text: 17 17 17 !important;
     --text-soft: 107 114 128 !important;
+    /* Was missing from this forced-light block - printing from dark mode
+       left this one token at its dark value (255 92 52) composited against
+       the now-forced-light background, instead of the light value this
+       block intends (194 65 12, 4.90:1 - see the :root/dark-mode blocks
+       above for the full history). */
+    --amber-banner-text: 194 65 12 !important;
   }
 
   body * {

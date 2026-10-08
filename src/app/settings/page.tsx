@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { clearStoredThemePreference, getStoredThemePreference } from "@/lib/theme-preference";
+import { clearStoredThemePreference, getStoredThemePreference, subscribeThemeChange } from "@/lib/theme-preference";
 
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -26,6 +26,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setStoredThemePref(getStoredThemePreference());
+    // The header's own ThemeToggle button (above, in this same page) is a
+    // SEPARATE component instance with its own state - clicking it doesn't
+    // by itself update this page's storedThemePref. subscribeThemeChange is
+    // what makes the link below appear/disappear live, without a reload.
+    return subscribeThemeChange(() => setStoredThemePref(getStoredThemePreference()));
   }, []);
 
   function handleResetTheme() {
