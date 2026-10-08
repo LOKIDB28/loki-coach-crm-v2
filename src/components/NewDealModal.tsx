@@ -228,14 +228,19 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-onyx/50 backdrop-blur-sm px-4 py-6 overflow-y-auto transition-opacity duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+      className={`glass-scrim fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto transition-opacity duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
         visible ? "opacity-100" : "opacity-0"
       }`}
       onKeyDown={handleKeyDown}
       onClick={handleBackdropClick}
     >
+      {/* Opaque, no blur - a reading surface (form fields, labels), never
+          glass. text-textSoft measured 1.70:1 here when this was
+          bg-surface/60 backdrop-blur-md, far under WCAG AA's 4.5:1 - see
+          globals.css's own comment on .glass-scrim/.glass-bar for the full
+          history. Border + shadow kept for the same visual depth. */}
       <div
-        className={`w-full max-w-2xl bg-surface/60 backdrop-blur-md border border-border/10 rounded-2xl shadow-xl my-auto transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`w-full max-w-2xl bg-surface border border-border/10 rounded-2xl shadow-xl my-auto transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
           visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
         }`}
       >
