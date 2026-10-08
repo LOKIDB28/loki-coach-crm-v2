@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Field } from "./ui/Field";
 import { TextInput } from "./ui/TextInput";
+import { SourceCombobox } from "./ui/SourceCombobox";
 import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { Button } from "./ui/Button";
@@ -31,10 +32,11 @@ import {
   findClientMatchesForDeal,
   findCoachMatchesForDeal,
   fullName,
+  getDistinctSourcesWithCounts,
+  getRecentSources,
   INTERETS,
   normalizeRepName,
   REP_TAB_ORDER,
-  SOURCE_SUGGESTIONS,
   stageIcon,
   TRAVAUX_ENTRETIEN_OPTIONS,
   type TravauxEntretien,
@@ -553,6 +555,13 @@ export function DealDrawer({
       return (ia === -1 ? REP_TAB_ORDER.length : ia) - (ib === -1 ? REP_TAB_ORDER.length : ib);
     });
 
+  // allDeals already carries contact.source/contact.created_at (same fetch
+  // the rest of the app already uses) - no extra query for this.
+  const recentSources = getRecentSources(allDeals, new Date());
+  const allKnownSources = getDistinctSourcesWithCounts(allDeals)
+    .filter((s) => s.source !== null)
+    .map((s) => s.source as string);
+
   // Once first contact is logged, going back to Prospect specifically is
   // blocked - every other backward move (e.g. Rencontre -> Contact) stays
   // untouched. Checked against the actual target stage's id, not a
@@ -1004,16 +1013,12 @@ export function DealDrawer({
             >
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Source">
-                  <TextInput
-                    list="source-suggestions"
+                  <SourceCombobox
                     value={section1.source}
-                    onChange={(e) => setSection1((s) => ({ ...s, source: e.target.value, dirty: true }))}
+                    onChange={(v) => setSection1((s) => ({ ...s, source: v, dirty: true }))}
+                    recentSources={recentSources}
+                    allKnownSources={allKnownSources}
                   />
-                  <datalist id="source-suggestions">
-                    {SOURCE_SUGGESTIONS.map((s) => (
-                      <option key={s} value={s} />
-                    ))}
-                  </datalist>
                 </Field>
                 <Field label="Niveau d'intérêt">
                   <Select

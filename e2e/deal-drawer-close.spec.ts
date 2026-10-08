@@ -29,17 +29,16 @@ test("Escape asks for confirmation instead of closing when a section has unsaved
   // toggles open/closed on click, so only click it if it isn't already
   // open (true when this deal's current stage happens to be Prospect,
   // Section's own defaultOpen) - otherwise this click would collapse it.
-  const sourceField = page.locator('input[list="source-suggestions"]');
+  const sourceField = page.locator('input[role="combobox"]');
   if (!(await sourceField.isVisible())) {
     await page.getByRole("button", { name: new RegExp("^1 · ") }).click();
   }
   await sourceField.fill("e2e read-only check - never saved");
-  // Move focus off the datalist-backed field before Escape: the drawer
-  // deliberately treats Escape as a no-op while a field like this one is
-  // focused (it might be closing that field's own native suggestion
-  // popup, not asking to close the drawer) - see isAutocompleteOrDateField
-  // in DealDrawer.tsx. Tabbing away first is what exercises the general
-  // dirty-close-confirmation path this test is actually checking.
+  // Filling opens SourceCombobox's own suggestion list. Tab away first so
+  // ITS Escape handling (closes the list only, stopPropagation - see
+  // SourceCombobox.tsx) doesn't absorb the very Escape this test means to
+  // exercise - with the list already closed, this Escape reaches the
+  // drawer's own general dirty-close-confirmation path instead.
   await page.keyboard.press("Tab");
 
   await page.keyboard.press("Escape");

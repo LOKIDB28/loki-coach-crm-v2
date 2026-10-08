@@ -49,7 +49,13 @@ import {
   uploadDealPhoto,
 } from "@/lib/data";
 import { latestActivityByDeal, latestStageEntryByDeal } from "@/lib/report";
-import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS } from "@/lib/domain";
+import {
+  findClientMatchesForDeal,
+  findCoachMatchesForDeal,
+  fullName,
+  getDistinctSourcesWithCounts,
+  INTERETS,
+} from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import { INTELLIGENCE_YELLOW } from "@/lib/theme";
 import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
@@ -61,6 +67,7 @@ import { HoverTooltip } from "@/components/HoverTooltip";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { SourceFilterDropdown } from "@/components/ui/SourceFilterDropdown";
 import { useEffectiveTheme } from "@/lib/use-effective-theme";
 import { POPOVER_CHROME } from "@/lib/ui";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
@@ -134,6 +141,9 @@ function DashboardPageInner() {
   // clicking a rep always adds/removes just that one id.
   const [activeOwnerIds, setActiveOwnerIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  // null = "Toutes" (no filter), "" = "Sans source" (the no-source bucket),
+  // otherwise the exact contacts.source label.
+  const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null);
   const [groupByInterest, setGroupByInterest] = useState(false);
   const [dupesOnly, setDupesOnly] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
@@ -509,7 +519,12 @@ function DashboardPageInner() {
         stageById.get(d.stage_id)?.label ?? "",
         d.montant ?? "",
         d.canal,
-        d.source ?? "",
+        // contacts.source first - the field NewDealModal/DealDrawer actually
+        // write (confirmed via a read-only audit, 2026-10-08: deals.source is
+        // never written by this app). deals.source only still matters for
+        // the ~367 historical deals that pre-date this app, where it's the
+        // only one of the two ever populated.
+        d.contact.source ?? d.source ?? "",
         d.owner_id ? owner?.nom || owner?.email || "" : "Non assigné",
       ];
     });
@@ -559,6 +574,12 @@ function DashboardPageInner() {
     }
     return counts;
   }, [visibleDeals]);
+
+  // Same archived-aware source as stageCounts/ownerCounts above (visibleDeals,
+  // not filteredDeals) - the filter's own list of options must stay stable
+  // regardless of which OTHER filters (stage/owner/search) are currently
+  // active, same reasoning as those two.
+  const sourceCounts = useMemo(() => getDistinctSourcesWithCounts(visibleDeals), [visibleDeals]);
 
   // Owner ids with at least one non-archived deal - deliberately from the
   // full `deals` list, not `visibleDeals`, so this stays the same set
@@ -621,15 +642,19 @@ function DashboardPageInner() {
       // dupeClientIds/dupeCoachIds as-is, never recomputes or touches the
       // matching logic itself.
       if (dupesOnly && !dupeClientIds.has(d.id) && !dupeCoachIds.has(d.id)) return false;
+      if (activeSourceFilter !== null) {
+        if (activeSourceFilter === "" ? d.contact.source : d.contact.source !== activeSourceFilter) return false;
+      }
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
         const phone = (d.contact.telephone ?? "").toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) return false;
+        const source = (d.contact.source ?? "").toLowerCase();
+        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !source.includes(q)) return false;
       }
       return true;
     });
-  }, [visibleDeals, activeStage, activeOwnerIds, search, dupesOnly, dupeClientIds, dupeCoachIds]);
+  }, [visibleDeals, activeStage, activeOwnerIds, search, dupesOnly, dupeClientIds, dupeCoachIds, activeSourceFilter]);
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
@@ -649,15 +674,19 @@ function DashboardPageInner() {
     const q = search.trim().toLowerCase();
     return visibleDeals.filter((d) => {
       if (activeOwnerIds.length > 0 && (!d.owner_id || !activeOwnerIds.includes(d.owner_id))) return false;
+      if (activeSourceFilter !== null) {
+        if (activeSourceFilter === "" ? d.contact.source : d.contact.source !== activeSourceFilter) return false;
+      }
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
         const phone = (d.contact.telephone ?? "").toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) return false;
+        const source = (d.contact.source ?? "").toLowerCase();
+        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !source.includes(q)) return false;
       }
       return true;
     });
-  }, [visibleDeals, activeOwnerIds, search]);
+  }, [visibleDeals, activeOwnerIds, search, activeSourceFilter]);
 
   return (
     <div className="min-h-screen">
@@ -987,17 +1016,26 @@ function DashboardPageInner() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher (nom, courriel, téléphone)"
+                  placeholder="Rechercher (nom, courriel, téléphone, source)"
                   className="w-full rounded-lg bg-surface2 border border-border/20 pl-9 pr-3 py-2 text-sm text-text placeholder:text-textSoft/60 focus:outline-none focus:border-teal focus:ring-2 focus:ring-teal/20"
                 />
               </div>
 
+              {/* Compatible with both grid and kanban - same visibleDeals
+                  base as the stage/owner filters above, so its own count per
+                  source never shifts just because another filter narrowed
+                  the current view. */}
+              <SourceFilterDropdown sources={sourceCounts} active={activeSourceFilter} onSelect={setActiveSourceFilter} />
+
               {/* activeStage's chip is grid-only (kanban already shows every
                   stage as a column - keeping the chip visible in kanban
                   would misleadingly imply it's still filtering something).
-                  Owner/search chips stay visible in both, since kanban
-                  columns are filtered by both same as the grid. */}
-              {((layout === "grid" && activeStage !== null) || activeOwnerIds.length > 0 || search) && (
+                  Owner/search/source chips stay visible in both, since
+                  kanban columns are filtered by all three same as the grid. */}
+              {((layout === "grid" && activeStage !== null) ||
+                activeOwnerIds.length > 0 ||
+                search ||
+                activeSourceFilter !== null) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {layout === "grid" && activeStage !== null && (
                     <Chip label={`Étape: ${stageById.get(activeStage)?.label}`} onClear={() => setActiveStage(null)} />
@@ -1010,6 +1048,12 @@ function DashboardPageInner() {
                     />
                   ))}
                   {search && <Chip label={`Recherche: ${search}`} onClear={() => setSearch("")} />}
+                  {activeSourceFilter !== null && (
+                    <Chip
+                      label={`Source: ${activeSourceFilter === "" ? "Sans source" : activeSourceFilter}`}
+                      onClear={() => setActiveSourceFilter(null)}
+                    />
+                  )}
                 </div>
               )}
 

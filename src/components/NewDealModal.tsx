@@ -8,7 +8,15 @@ import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { Spinner } from "./ui/Spinner";
 import { ErrorBanner } from "./ui/ErrorBanner";
-import { findClientMatchesForDeal, findCoachMatchesForDeal, fullName, INTERETS, SOURCE_SUGGESTIONS } from "@/lib/domain";
+import { SourceCombobox } from "./ui/SourceCombobox";
+import {
+  findClientMatchesForDeal,
+  findCoachMatchesForDeal,
+  fullName,
+  getDistinctSourcesWithCounts,
+  getRecentSources,
+  INTERETS,
+} from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import type { Deal, DealWithContact, NewContact, Profile } from "@/lib/types";
 
@@ -41,6 +49,12 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingClose, setPendingClose] = useState(false);
+  // Session-only (component state, never localStorage) - "la dernière
+  // source choisie dans la session reste préremplie après une création".
+  // Only a successful create updates this; cancelling never does. See
+  // reallyClose()'s own nextSource parameter for why it's not just read
+  // from this state directly on the success path (stale-closure risk).
+  const [lastUsedSource, setLastUsedSource] = useState("");
 
   // `open` is a prop the parent flips instantly, but a real exit animation
   // needs this component to keep rendering for a moment after that -
@@ -91,6 +105,17 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
     if (pendingClose) cancelInBannerRef.current?.focus({ preventScroll: true });
   }, [pendingClose]);
 
+  // existingDeals already carries contact.source/contact.created_at (same
+  // fetch the rest of the app already uses) - no extra query for this.
+  const recentSources = useMemo(() => getRecentSources(existingDeals, new Date()), [existingDeals]);
+  const allKnownSources = useMemo(
+    () =>
+      getDistinctSourcesWithCounts(existingDeals)
+        .filter((s) => s.source !== null)
+        .map((s) => s.source as string),
+    [existingDeals]
+  );
+
   const clientDupes = useMemo(
     () =>
       findClientMatchesForDeal(
@@ -114,8 +139,14 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
     setDirty(true);
   }
 
-  function reallyClose() {
-    setDraft(emptyDraft);
+  // nextSource defaults to lastUsedSource (every cancel/Escape/backdrop
+  // path) but the create-success path passes the just-submitted value
+  // directly instead of relying on lastUsedSource's own state - setState
+  // updates don't apply within the same function call, so reading
+  // lastUsedSource right after calling setLastUsedSource(...) would still
+  // see the OLD value here.
+  function reallyClose(nextSource: string = lastUsedSource) {
+    setDraft({ ...emptyDraft, source: nextSource });
     setError(null);
     setDirty(false);
     setPendingClose(false);
@@ -185,7 +216,9 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
         coach_vise: draft.coach_vise.trim() || null,
       };
       await onCreate(contactInput, dealInput, draft.note.trim());
-      reallyClose();
+      const submittedSource = draft.source.trim();
+      setLastUsedSource(submittedSource);
+      reallyClose(submittedSource);
     } catch (err) {
       setError(getErrorMessage(err, "Erreur lors de la création du dossier."));
     } finally {
@@ -287,12 +320,27 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
                 </Select>
               </Field>
               <Field label="Source">
-                <TextInput list="source-suggestions-new" value={draft.source} onChange={(e) => update("source", e.target.value)} />
-                <datalist id="source-suggestions-new">
-                  {SOURCE_SUGGESTIONS.map((s) => (
-                    <option key={s} value={s} />
-                  ))}
-                </datalist>
+                <SourceCombobox
+                  value={draft.source}
+                  onChange={(v) => update("source", v)}
+                  recentSources={recentSources}
+                  allKnownSources={allKnownSources}
+                />
+                {lastUsedSource && draft.source === lastUsedSource && (
+                  <p className="flex items-center gap-2 text-[11px] text-textSoft mt-1">
+                    Préremplie : <span className="font-medium text-text">{lastUsedSource}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLastUsedSource("");
+                        update("source", "");
+                      }}
+                      className="text-teal hover:underline"
+                    >
+                      Effacer
+                    </button>
+                  </p>
+                )}
               </Field>
               <Field label="Niveau d'intérêt">
                 <Select value={draft.niveau_interet} onChange={(e) => update("niveau_interet", e.target.value)}>
@@ -349,7 +397,7 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
                   </button>
                   <button
                     type="button"
-                    onClick={reallyClose}
+                    onClick={() => reallyClose()}
                     className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90"
                   >
                     Confirmer
