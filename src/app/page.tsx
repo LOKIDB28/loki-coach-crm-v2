@@ -55,6 +55,7 @@ import {
   fullName,
   getDistinctSourcesWithCounts,
   INTERETS,
+  matchesSourceFilter,
 } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
 import { INTELLIGENCE_YELLOW } from "@/lib/theme";
@@ -642,9 +643,7 @@ function DashboardPageInner() {
       // dupeClientIds/dupeCoachIds as-is, never recomputes or touches the
       // matching logic itself.
       if (dupesOnly && !dupeClientIds.has(d.id) && !dupeCoachIds.has(d.id)) return false;
-      if (activeSourceFilter !== null) {
-        if (activeSourceFilter === "" ? d.contact.source : d.contact.source !== activeSourceFilter) return false;
-      }
+      if (!matchesSourceFilter(d.contact.source, activeSourceFilter)) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
@@ -674,9 +673,7 @@ function DashboardPageInner() {
     const q = search.trim().toLowerCase();
     return visibleDeals.filter((d) => {
       if (activeOwnerIds.length > 0 && (!d.owner_id || !activeOwnerIds.includes(d.owner_id))) return false;
-      if (activeSourceFilter !== null) {
-        if (activeSourceFilter === "" ? d.contact.source : d.contact.source !== activeSourceFilter) return false;
-      }
+      if (!matchesSourceFilter(d.contact.source, activeSourceFilter)) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();

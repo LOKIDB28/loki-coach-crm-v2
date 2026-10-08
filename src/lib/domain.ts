@@ -34,9 +34,17 @@ export function stageIcon(code: string): LucideIcon {
   return STAGE_ICONS[code] ?? FileText;
 }
 
-/** Suggested values for the free-text contacts.source field - not DB-enforced. */
+/**
+ * Suggested values for the free-text contacts.source field - not
+ * DB-enforced. "Website", not "Site web" - production data has 32 contacts
+ * spelled "Website" against only 2 as "Site web" (confirmed via a read-only
+ * query, 2026-10-08); the fixed suggestion now matches the spelling people
+ * actually use, so typing it proposes the existing one instead of creating
+ * a near-duplicate. The 2 existing "Site web" rows are untouched - this
+ * only changes what's suggested going forward, never rewrites stored data.
+ */
 export const SOURCE_SUGGESTIONS = [
-  "Site web",
+  "Website",
   "Salon / Exposition",
   "Référence client",
   "Réseaux sociaux",
@@ -54,12 +62,16 @@ export const SOURCE_SUGGESTIONS = [
 
 /**
  * Historical, high-volume channel values already present in contacts.source
- * (confirmed via a read-only production query, 2026-10-08) that are NOT in
- * SOURCE_SUGGESTIONS today - excluded from "Sources récentes" (SourceCombobox)
- * alongside SOURCE_SUGGESTIONS itself, so the ~260 "Facebook" contacts (etc.)
- * don't flood a list meant to surface one-off events. "Site web" is already
- * in SOURCE_SUGGESTIONS and listed here too only for this constant's own
- * clarity/self-documentation - the union naturally dedupes it.
+ * (confirmed via a read-only production query, 2026-10-08), excluded from
+ * "Sources récentes" (SourceCombobox) alongside SOURCE_SUGGESTIONS itself,
+ * so the ~260 "Facebook" contacts (etc.) don't flood a list meant to
+ * surface one-off events. "Facebook" and "Website" are already in
+ * SOURCE_SUGGESTIONS and listed here too only for this constant's own
+ * clarity/self-documentation - the union naturally dedupes both. "Site
+ * web" stays here deliberately even though it's no longer a fixed
+ * suggestion (SOURCE_SUGGESTIONS now offers "Website" instead) - its 2
+ * historical rows are still real production data, still excluded from
+ * "Sources récentes" the same way.
  */
 export const HISTORICAL_HIGH_VOLUME_SOURCES = ["Facebook", "Website", "TBD", "Reference", "Show", "TMCS", "Site web"];
 
@@ -152,6 +164,28 @@ export function findMatchingExistingSource(typed: string, allKnownSources: strin
     if (normalizeSourceKey(known) === key) return known;
   }
   return null;
+}
+
+/**
+ * Does this contact's source belong to the filter bucket `activeFilter`
+ * selects? `activeFilter` is always one of the canonical labels
+ * getDistinctSourcesWithCounts produced (or null/"" for "Toutes"/"Sans
+ * source") - but a contact's own stored source can be a case/accent/
+ * whitespace variant of that same canonical label (that's the whole reason
+ * getDistinctSourcesWithCounts groups by normalizeSourceKey in the first
+ * place, picking one representative label to display per group). Matching
+ * here by exact string equality instead of the same normalized key would
+ * silently under-count: the dropdown's own number would include every
+ * variant, while the filtered list would only ever show the one exact
+ * spelling. Used by both filteredDeals and kanbanDeals (page.tsx) so the
+ * two can never drift apart from each other either.
+ */
+export function matchesSourceFilter(contactSource: string | null, activeFilter: string | null): boolean {
+  if (activeFilter === null) return true;
+  const hasSource = contactSource !== null && contactSource.trim() !== "";
+  if (activeFilter === "") return !hasSource;
+  if (!hasSource) return false;
+  return normalizeSourceKey(contactSource) === normalizeSourceKey(activeFilter);
 }
 
 // Fixed display order for the 5 real internal team members, confirmed in
