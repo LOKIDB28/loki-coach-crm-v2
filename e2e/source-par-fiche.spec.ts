@@ -65,11 +65,19 @@ test("Source filter narrows the grid and its chip clears it", async ({ page }) =
  * design ("there is no separate test environment or database"). A
  * fabricated in-memory fixture would need either a second test harness or
  * a real write to production to set up - both out of scope for a small
- * read-only check. "Mailchimp" is a real, rare contacts.source value
- * (count 1, confirmed via a read-only query, 2026-10-08) - distinctive
- * enough that it's not plausibly a substring of any contact's own name,
- * email, or phone, so a match proves the search actually looked at
- * source, not one of those three.
+ * read-only check.
+ *
+ * The source value to search for is picked AT RUN TIME, not hardcoded:
+ * whichever real contacts.source value currently has exactly one
+ * non-archived deal attached to it (grouped the same normalized way as
+ * getDistinctSourcesWithCounts/matchesSourceFilter in lib/domain.ts, so a
+ * case/accent/whitespace variant of the same source doesn't look rare when
+ * it isn't). A rare value is unlikely to also be a substring of some other
+ * contact's name/email/phone, which is what would make a match prove
+ * nothing about source specifically - but this is a real-world property of
+ * whatever the team's data looks like today, not something this test can
+ * guarantee for an arbitrary future value; a coincidental collision would
+ * surface as a genuine (if unrelated) failure here, not a false pass.
  */
 test("search text finds a dossier by its source", async ({ page }) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -81,18 +89,35 @@ test("search text finds a dossier by its source", async ({ page }) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { count, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("deals")
-    .select("id, contacts!inner(source)", { count: "exact", head: true })
+    .select("id, contacts(source)")
     .eq("archived", false)
-    .eq("contacts.source", "Mailchimp");
+    .returns<{ id: string; contacts: { source: string | null } | null }[]>();
   if (error) throw error;
-  if (count === null) throw new Error("Ground-truth source count query returned null.");
-  if (count === 0) throw new Error('No non-archived deal with contacts.source = "Mailchimp" found - pick a different real value.');
+
+  function normalizeSourceKey(s: string): string {
+    return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
+  }
+
+  const bySource = new Map<string, { label: string; count: number }>();
+  for (const d of data) {
+    const source = d.contacts?.source;
+    if (!source || !source.trim()) continue;
+    const key = normalizeSourceKey(source);
+    const existing = bySource.get(key);
+    if (existing) existing.count++;
+    else bySource.set(key, { label: source, count: 1 });
+  }
+
+  const rare = [...bySource.values()].find((v) => v.count === 1);
+  if (!rare) {
+    throw new Error("No contacts.source value has exactly one non-archived deal right now - can't pick a rare value to search for.");
+  }
 
   await page.goto("/");
   await page.getByTestId("deal-card").first().waitFor();
 
-  await page.getByPlaceholder("Rechercher (nom, courriel, téléphone, source)").fill("Mailchimp");
-  await expect(page.getByTestId("deal-card")).toHaveCount(count);
+  await page.getByPlaceholder("Rechercher (nom, courriel, téléphone, source)").fill(rare.label);
+  await expect(page.getByTestId("deal-card")).toHaveCount(1);
 });
