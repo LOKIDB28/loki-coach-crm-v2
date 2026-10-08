@@ -21,17 +21,48 @@
   --border: 107 114 128; /* stone, used at low alpha */
   --text: 17 17 17; /* onyx */
   --text-soft: 107 114 128; /* stone */
+  /* ReportGenerator's stagnation-threshold banner text only - lighter than
+     COLORS.orange (#FF5C34) because text-orange on this banner's own
+     bg-orange/5 measures 2.91:1 in light mode against the real composited
+     background (below WCAG AA's 4.5:1) - see theme.ts's own comment next
+     to COLORS.orange for the full history (PR #22). This hex is
+     Tailwind's own orange-700 (#C2410C), 4.90:1 against that same
+     background - not reachable as a Tailwind class here since the
+     project's own `orange` override in tailwind.config.ts shadows
+     Tailwind's default numbered orange-50..900 scale entirely.
+     Dark mode doesn't need a lighter/darker variant - it reuses the
+     ordinary brand orange (#FF5C34, 5.30:1 there already). */
+  --amber-banner-text: 194 65 12;
 }
 
+/* System dark - applies unless an explicit light choice overrides it
+   ([data-theme="light"], set by ThemeToggle/localStorage). Must stay
+   byte-identical to the manual override block below (same selectors to
+   the property) - e2e/theme-toggle.spec.ts checks this directly via
+   getComputedStyle, so the two blocks can't silently drift apart. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: 17 17 17; /* onyx */
     --surface: 27 27 27; /* onyx + ~6% paper, for elevation */
     --surface-2: 34 34 34; /* onyx + ~9% paper */
     --border: 255 255 255; /* paper, used at low alpha */
     --text: 249 249 249; /* paperDim */
     --text-soft: 156 163 175; /* stone, lightened for AA contrast on dark */
+    --amber-banner-text: 255 92 52; /* ordinary brand orange - already 5.30:1 here */
   }
+}
+
+/* Manual override (ThemeToggle/localStorage, see theme-preference.ts) -
+   dark regardless of the system setting. Byte-identical to the system-dark
+   block above - see its own comment. */
+:root[data-theme="dark"] {
+  --bg: 17 17 17;
+  --surface: 27 27 27;
+  --surface-2: 34 34 34;
+  --border: 255 255 255;
+  --text: 249 249 249;
+  --text-soft: 156 163 175;
+  --amber-banner-text: 255 92 52;
 }
 
 html,
@@ -175,6 +206,21 @@ button:active {
  * ReportGenerator.tsx) so they disappear here for free, no extra class.
  */
 @media print {
+  /* Forced regardless of the active theme (system or manual) - a printed
+     report stays white paper/dark ink even if the app itself is in dark
+     mode when "Exporter en PDF" is clicked. !important is deliberate: it's
+     the only way to reliably outrank :root[data-theme="dark"]'s own
+     specificity (an attribute selector) from inside a plain :root rule,
+     regardless of the two blocks' source order. */
+  :root {
+    --bg: 249 249 249 !important;
+    --surface: 255 255 255 !important;
+    --surface-2: 249 249 249 !important;
+    --border: 107 114 128 !important;
+    --text: 17 17 17 !important;
+    --text-soft: 107 114 128 !important;
+  }
+
   body * {
     visibility: hidden;
   }
