@@ -19,6 +19,7 @@ CRM interne de LOKI Coach (motorisés Prévost de luxe, Québec). Next.js 15 (Ap
 - Migrations numérotées dans `supabase/migrations/`, commentées, additives quand c'est possible.
 - Aucune clé, aucun mot de passe : noms de variables d'environnement seulement, jamais les valeurs.
 - `service_role` : lecture seule sur `deals`, `contacts`, `activities`, `pipeline_stages`. Tout nouveau besoin d'écriture passe par une fonction étroite en `SECURITY DEFINER`, avec `EXECUTE` retiré à `anon` et `authenticated`, et l'accord explicite de LP.
+- Exception : une fonction `SECURITY DEFINER` qui n'agit que sur la ligne de `auth.uid()` (et refuse si `auth.uid()` est nul) peut être exécutable par `authenticated`, jamais par `anon`. Exemple : `regenerate_my_calendar_token()` (migration 0029).
 
 ## Décisions à ne pas rouvrir
 
