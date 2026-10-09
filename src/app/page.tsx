@@ -58,6 +58,7 @@ import {
   matchesSourceFilter,
 } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
+import { phoneForCsv, phoneMatchesQuery } from "@/lib/phone";
 import { INTELLIGENCE_YELLOW } from "@/lib/theme";
 import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
 import { CalendarView } from "@/components/calendar/CalendarView";
@@ -514,7 +515,9 @@ function DashboardPageInner() {
       const owner = d.owner_id ? profileById.get(d.owner_id) : null;
       return [
         fullName(d.contact),
-        d.contact.telephone ?? "",
+        // Formatted and formula-neutralized (leading apostrophe) - see
+        // phoneForCsv. The other text columns are exported as-is.
+        phoneForCsv(d.contact.telephone),
         d.contact.email ?? "",
         d.contact.ville ?? "",
         stageById.get(d.stage_id)?.label ?? "",
@@ -649,7 +652,14 @@ function DashboardPageInner() {
         const email = (d.contact.email ?? "").toLowerCase();
         const phone = (d.contact.telephone ?? "").toLowerCase();
         const source = (d.contact.source ?? "").toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !source.includes(q)) return false;
+        if (
+          !name.includes(q) &&
+          !email.includes(q) &&
+          !phone.includes(q) &&
+          !phoneMatchesQuery(d.contact.telephone, q) &&
+          !source.includes(q)
+        )
+          return false;
       }
       return true;
     });
@@ -679,7 +689,14 @@ function DashboardPageInner() {
         const email = (d.contact.email ?? "").toLowerCase();
         const phone = (d.contact.telephone ?? "").toLowerCase();
         const source = (d.contact.source ?? "").toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !source.includes(q)) return false;
+        if (
+          !name.includes(q) &&
+          !email.includes(q) &&
+          !phone.includes(q) &&
+          !phoneMatchesQuery(d.contact.telephone, q) &&
+          !source.includes(q)
+        )
+          return false;
       }
       return true;
     });

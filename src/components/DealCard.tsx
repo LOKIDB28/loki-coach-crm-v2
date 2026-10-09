@@ -3,6 +3,7 @@
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { fullName, interetColor } from "@/lib/domain";
 import { daysOverdue, daysSince, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
+import { formatPhone } from "@/lib/phone";
 import { LEAD_AGE_COLORS } from "@/lib/theme";
 import type { DealWithContact, PipelineStage } from "@/lib/types";
 
@@ -95,7 +96,7 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
         {contact.telephone && (
           <div className="flex items-center gap-1.5">
             <Phone size={13} className="text-textSoft/70" />
-            <span className="truncate">{contact.telephone}</span>
+            <span className="truncate">{formatPhone(contact.telephone)}</span>
           </div>
         )}
         {contact.email && (

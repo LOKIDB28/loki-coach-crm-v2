@@ -42,6 +42,7 @@ import {
   type TravauxEntretien,
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
+import { formatPhone } from "@/lib/phone";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
 import type {
   ActivityWithAuthor,
@@ -268,6 +269,9 @@ export function DealDrawer({
   onGetSignedDocumentUrl,
 }: DealDrawerProps) {
   const [localContact, setLocalContact] = useState(deal.contact);
+  // In-progress text of the Téléphone field while it has focus; null = not
+  // editing, the field then shows the stored number formatted.
+  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
   const [localDeal, setLocalDeal] = useState<Deal>(deal);
   const [saving, setSaving] = useState(false);
 
@@ -970,9 +974,18 @@ export function DealDrawer({
             </Field>
             <Field label="Téléphone">
               <TextInput
-                value={localContact.telephone ?? ""}
-                onChange={(e) => setLocalContact((c) => ({ ...c, telephone: e.target.value }))}
-                onBlur={(e) => commitContact({ telephone: e.target.value })}
+                value={phoneDraft ?? formatPhone(localContact.telephone)}
+                onChange={(e) => setPhoneDraft(e.target.value)}
+                onBlur={(e) => {
+                  setPhoneDraft(null);
+                  const formatted = formatPhone(e.target.value);
+                  // Shown formatted, but the stored text is never rewritten
+                  // unless the user actually changed the number - tabbing
+                  // through an untouched field must not reformat (i.e.
+                  // rewrite) an existing contact's phone in the database.
+                  if (formatted === formatPhone(localContact.telephone)) return;
+                  commitContact({ telephone: formatted || null });
+                }}
               />
             </Field>
             <Field label="Courriel">

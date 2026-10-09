@@ -16,6 +16,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
+import { phoneKey } from "./phone";
 import { COLORS } from "./theme";
 import type { Contact, Deal, DealWithContact } from "./types";
 
@@ -277,16 +278,16 @@ export function fullName(c: { prenom?: string | null; nom?: string | null }): st
 }
 
 /**
- * Digits-only, with the leading Canada/US country code dropped when present
- * ("+1 418-805-0504", "1-418-805-0504" and "418-805-0504" all normalize to
- * "4188050504") - our real data mixes both, unformatted phone strings were
- * failing exact-match on separator differences alone. Only strips a leading
- * "1" when the digit count is 11 (i.e. actually a country code), so a bare
- * 11-digit local number without one isn't mistakenly truncated.
+ * Digits-only main number, leading Canada/US "1" dropped when it's actually
+ * a country code (11 digits), with the extension compared separately - see
+ * phoneKey in lib/phone.ts. "+1 418-805-0504", "1-418-805-0504" and
+ * "418-805-0504" all normalize to "4188050504"; "418-805-0504 x12" and
+ * "+1-418-805-0504 poste 12" both to "4188050504x12". Before the extension
+ * was split out, a formatted "+1-…" number with an extension (14 digits)
+ * kept its "1" and stopped matching the same number stored unformatted.
  */
 function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return phoneKey(phone);
 }
 
 /**
