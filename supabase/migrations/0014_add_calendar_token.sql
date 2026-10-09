@@ -1,16 +1,18 @@
 -- LOKI Coach CRM v2 - per-rep .ics calendar feed token.
 --
--- calendar_token is intentionally NEVER exposed through a normal table
--- SELECT, even though `authenticated` already has table-wide SELECT on
--- profiles (migration 0004) and the existing "interne lit profils" RLS
--- policy (USING is_internal()) makes every row visible to every internal
--- rep - confirmed before writing this, not assumed: without the explicit
--- REVOKE below, adding this column would let any rep read every other
--- rep's token through the exact same broad queries already in the app
--- (e.g. the "Représentant" dropdown's profiles fetch). The two functions
--- below are the only way to read a token: get_my_calendar_token() only
--- ever returns the caller's own (via auth.uid()), and get_calendar_feed()
--- takes a token as input rather than exposing the column at all.
+-- CORRECTION (see 0030_move_calendar_tokens_to_own_table.sql): the intent
+-- below - calendar_token never readable through a normal table SELECT -
+-- was NOT achieved. `authenticated` holds table-level SELECT on profiles
+-- (migration 0004), and in PostgreSQL a column-level REVOKE does not
+-- override a table-level GRANT, so the `revoke select (calendar_token)`
+-- below never took effect: through the "interne lit profils" RLS policy,
+-- every internal rep could read every other rep's token (confirmed on the
+-- live database). 0030 moves the tokens to their own owner-only table,
+-- public.calendar_tokens, and empties this column.
+--
+-- Original intent: get_my_calendar_token() only ever returns the caller's
+-- own token (via auth.uid()), and get_calendar_feed() takes a token as
+-- input rather than exposing the column.
 
 alter table public.profiles
   add column if not exists calendar_token text unique not null default extensions.uuid_generate_v4()::text;

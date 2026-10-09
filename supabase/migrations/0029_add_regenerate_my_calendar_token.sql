@@ -26,20 +26,10 @@
 -- point. Revoked from public and anon explicitly - Supabase's default
 -- privileges grant EXECUTE on new public functions to anon as well.
 --
--- Admin procedure when a rep leaves (comment only - not run by this
--- migration, run by hand in the SQL Editor, then verify):
---
---   update public.profiles
---      set calendar_token = extensions.uuid_generate_v4()::text
---    where email = '<adresse du représentant>';
---
---   -- vérification : exactement 1 ligne, jeton différent de l'ancien
---   select id, email, length(calendar_token) from public.profiles
---    where email = '<adresse du représentant>';
---
--- That single update is enough to cut off the departed rep's Outlook
--- subscription: their old URL no longer matches any profile. The new token
--- is never shown to anyone unless that account signs in again.
+-- SUPERSEDED by 0030: tokens now live in public.calendar_tokens and this
+-- function is redefined there. The admin procedure for a departing rep
+-- that used to be here updated profiles.calendar_token - after 0030 that
+-- would cut off nothing. Use the procedure in 0030's header instead.
 
 create or replace function public.regenerate_my_calendar_token()
 returns text

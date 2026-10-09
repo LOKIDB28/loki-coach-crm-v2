@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     // The .ics calendar feed has no session to check - Outlook can't log
     // in. The token in the URL is the sole credential (see
-    // get_calendar_feed(), created in migration 0014 and rewritten in 0019),
+    // get_calendar_feed(), created in 0014, rewritten in 0019 and 0030),
     // not a Supabase session.
     pathname.startsWith("/api/calendar");
 
