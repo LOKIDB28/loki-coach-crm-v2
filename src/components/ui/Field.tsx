@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 interface FieldProps {
-  label: string;
+  /** Usually plain text; may carry an inline marker (e.g. DealDrawer's OutlookMark). */
+  label: ReactNode;
   children: ReactNode;
   className?: string;
 }
