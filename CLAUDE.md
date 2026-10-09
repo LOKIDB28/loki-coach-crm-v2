@@ -16,6 +16,7 @@ CRM interne de LOKI Coach (motorisés Prévost de luxe, Québec). Next.js 15 (Ap
 ## Base de données et sécurité
 
 - Tu n'exécutes aucun SQL. LP l'exécute dans le SQL Editor, section par section, avec une requête de vérification après chacune.
+- Chaque bloc SQL que tu proposes à LP se termine par une requête de preuve qui retourne toujours une ligne (le message 'Success. No rows returned' ne prouve rien : il s'affiche aussi quand rien ne s'est exécuté). Aucune section ne dépend d'une autre non vérifiée : donne les blocs un par un, dans l'ordre d'application.
 - Migrations numérotées dans `supabase/migrations/`, commentées, additives quand c'est possible.
 - Aucune clé, aucun mot de passe : noms de variables d'environnement seulement, jamais les valeurs.
 - `service_role` : lecture seule sur `deals`, `contacts`, `activities`, `pipeline_stages`. Tout nouveau besoin d'écriture passe par une fonction étroite en `SECURITY DEFINER`, avec `EXECUTE` retiré à `anon` et `authenticated`, et l'accord explicite de LP.
