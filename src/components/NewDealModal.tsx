@@ -18,6 +18,7 @@ import {
   INTERETS,
 } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
+import { formatPhone } from "@/lib/phone";
 import type { Deal, DealWithContact, NewContact, Profile } from "@/lib/types";
 
 interface NewDealModalProps {
@@ -202,7 +203,10 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
       const contactInput: NewContact = {
         prenom: draft.prenom.trim(),
         nom: draft.nom.trim(),
-        telephone: draft.telephone.trim() || null,
+        // Formatted again here, not only on blur - a pasted number followed
+        // straight by Enter never fires the field's blur. Unknown shapes come
+        // back as typed (formatPhone is lossless), so nothing is ever blocked.
+        telephone: formatPhone(draft.telephone) || null,
         email: draft.email.trim() || null,
         ville: draft.ville.trim() || null,
         code_postal: draft.code_postal.trim() || null,
@@ -291,7 +295,11 @@ export function NewDealModal({ open, onClose, profiles, existingDeals, onCreate 
                 <TextInput value={draft.nom} onChange={(e) => update("nom", e.target.value)} />
               </Field>
               <Field label="Téléphone">
-                <TextInput value={draft.telephone} onChange={(e) => update("telephone", e.target.value)} />
+                <TextInput
+                  value={draft.telephone}
+                  onChange={(e) => update("telephone", e.target.value)}
+                  onBlur={(e) => update("telephone", formatPhone(e.target.value))}
+                />
               </Field>
               <Field label="Courriel">
                 <TextInput type="email" value={draft.email} onChange={(e) => update("email", e.target.value)} />
