@@ -22,6 +22,14 @@ export function scrubCalendarToken(event: ErrorEvent): ErrorEvent {
     if (event.request?.headers?.["Referer"]) event.request.headers["Referer"] = scrubUrl(referer);
   }
 
+  // Set by Sentry's own captureRequestError (onRequestError in
+  // instrumentation.ts) from the raw request path - token included - for
+  // any exception the route handler doesn't catch itself.
+  const nextjsContext = event.contexts?.nextjs;
+  if (nextjsContext && typeof nextjsContext.request_path === "string") {
+    nextjsContext.request_path = scrubUrl(nextjsContext.request_path);
+  }
+
   if (event.transaction) {
     event.transaction = scrubUrl(event.transaction);
   }

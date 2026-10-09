@@ -112,10 +112,12 @@ export default function SettingsPage() {
 
         <section className="bg-surface border border-border/15 rounded-xl p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-text mb-1">Flux calendrier des relances</h2>
+            <h2 className="text-sm font-semibold text-text mb-1">Flux calendrier des suivis</h2>
             <p className="text-xs text-textSoft">
-              Un lien personnel, à toi seul, qui liste tes relances à venir (dossiers non archivés avec une date de
-              suivi). Ajoute-le dans Outlook pour les voir directement dans ton calendrier, en lecture seule.
+              Un lien personnel, à toi seul, qui affiche dans Outlook, en lecture seule, les dates de tes dossiers
+              non archivés : relances, essais routiers, visites d&apos;usine, visites au bureau et rendez-vous de
+              service, passés et à venir. Chaque événement montre le type et le nom du client, avec un lien vers la
+              fiche.
             </p>
           </div>
 
@@ -145,13 +147,27 @@ export default function SettingsPage() {
               </div>
 
               <div className="rounded-lg bg-surface2 border border-border/20 px-3.5 py-3 text-xs text-textSoft space-y-1">
-                <p className="font-medium text-textSoft">Dans Outlook :</p>
-                <p>Ajouter un calendrier → À partir d&apos;Internet → colle ce lien.</p>
+                <p className="font-medium text-textSoft">Abonne-toi au lien, n&apos;importe pas le fichier :</p>
+                <p>
+                  Outlook web : Calendrier → Ajouter un calendrier → S&apos;abonner à partir du web → colle ce lien,
+                  donne-lui un nom, puis valide.
+                </p>
+                <p>Outlook sur l&apos;ordinateur : Ajouter un calendrier → À partir d&apos;Internet → colle ce lien.</p>
+                <p>
+                  Ne télécharge pas le fichier .ics pour l&apos;ouvrir ou l&apos;importer : une copie importée ne se met
+                  jamais à jour.
+                </p>
               </div>
 
               <p className="text-[11px] text-textSoft">
-                Ce lien est personnel et donne accès à tes relances - ne le partage pas. Il ne change jamais, sauf
-                demande explicite.
+                Outlook relit le lien de lui-même : un changement fait dans le CRM peut prendre de quelques heures à
+                plus de 24 h à apparaître, selon la version d&apos;Outlook. Le CRM ne peut pas forcer cette mise à
+                jour.
+              </p>
+
+              <p className="text-[11px] text-textSoft">
+                Ce lien est personnel : il donne accès à tes dossiers et aux noms de tes clients, sans mot de passe.
+                Ne le partage pas.
               </p>
             </>
           ) : null}

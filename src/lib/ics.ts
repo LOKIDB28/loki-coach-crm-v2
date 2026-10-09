@@ -25,26 +25,41 @@ function escapeText(value: string): string {
     .replace(/\r\n|\n|\r/g, "\\n");
 }
 
+/** UTF-8 byte length of one code point - computed directly so this file stays runtime-agnostic (no Buffer). */
+function utf8Length(codePoint: number): number {
+  if (codePoint < 0x80) return 1;
+  if (codePoint < 0x800) return 2;
+  if (codePoint < 0x10000) return 3;
+  return 4;
+}
+
 /**
  * Folds a content line at 75 octets with a CRLF + single leading space on
- * the continuation, per RFC 5545 §3.1. Approximates "octets" as UTF-16
- * code units - not byte-exact for multi-byte UTF-8 (accented names, etc.),
- * but produces valid, if occasionally slightly-early, folds - real ICS
- * parsers tolerate a short line, they don't tolerate an over-long one.
+ * the continuation, per RFC 5545 §3.1. Counts real UTF-8 bytes (an accented
+ * letter is 2, "—" is 3, an emoji is 4) and only ever breaks between code
+ * points - iterating the string with for...of walks code points, so a
+ * surrogate pair (emoji) is never split into two halves that would encode
+ * as U+FFFD.
  */
 function foldLine(line: string): string {
   const LIMIT = 75;
-  if (line.length <= LIMIT) return line;
   const parts: string[] = [];
-  let rest = line;
-  let first = true;
-  while (rest.length > 0) {
-    const take = first ? LIMIT : LIMIT - 1; // continuation lines lose 1 char to the leading space
-    parts.push((first ? "" : " ") + rest.slice(0, take));
-    rest = rest.slice(take);
-    first = false;
+  let current = "";
+  let currentBytes = 0;
+  for (const char of line) {
+    const charBytes = utf8Length(char.codePointAt(0)!);
+    // Continuation lines start with a 1-byte space, which counts toward the limit.
+    const budget = parts.length === 0 ? LIMIT : LIMIT - 1;
+    if (currentBytes + charBytes > budget) {
+      parts.push(current);
+      current = "";
+      currentBytes = 0;
+    }
+    current += char;
+    currentBytes += charBytes;
   }
-  return parts.join(CRLF);
+  parts.push(current);
+  return parts.join(CRLF + " ");
 }
 
 /** "2026-09-18T14:30:00.000Z" -> "20260918T143000Z" (always UTC, per DTSTART...Z). */
