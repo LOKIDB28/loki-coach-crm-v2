@@ -3,8 +3,9 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 /**
  * Gatekeeper for the whole app: anyone without a valid Supabase session is
- * bounced to /login. /login itself and the magic-link callback route are the
- * only public paths. Static assets are excluded via the matcher below.
+ * bounced to /login. Public paths: /login itself, the magic-link callback
+ * route, and the per-rep .ics calendar feed (/api/calendar/*, token-only -
+ * see isPublicPath below). Static assets are excluded via the matcher below.
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -48,7 +49,8 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     // The .ics calendar feed has no session to check - Outlook can't log
     // in. The token in the URL is the sole credential (see
-    // get_calendar_feed() in migration 0014), not a Supabase session.
+    // get_calendar_feed(), created in migration 0014 and rewritten in 0019),
+    // not a Supabase session.
     pathname.startsWith("/api/calendar");
 
   if (!isAuthed && !isPublicPath) {

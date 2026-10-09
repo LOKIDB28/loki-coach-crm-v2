@@ -1,7 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { fullName } from "@/lib/domain";
-import { formatCurrency } from "@/lib/format";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/ics";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +22,14 @@ const EVENT_TITLES: Record<string, string> = {
  * has no way to log in). The token in the URL is the sole credential, so
  * it's never logged: no console.log of the raw param anywhere in this
  * file, and errors are reported generically rather than echoing it back.
+ *
+ * Content: every non-archived deal owned by the token's rep, one VEVENT per
+ * date that's set - relances, essais routiers, visites d'usine, visites au
+ * bureau, rendez-vous de service - past and future alike (no date window).
+ * SUMMARY is "<type> — <client name>", DESCRIPTION the deal link only.
+ * Meant to be subscribed to, not imported: Outlook re-fetches on its own
+ * schedule (a few hours to more than 24 h depending on the Outlook
+ * version), never on demand - see the help text in app/settings/page.tsx.
  *
  * Uses the plain anon-key client (no cookies - there's no session to
  * carry) and the get_calendar_feed() RPC from migration 0019 (originally
@@ -94,15 +101,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         const clientName = fullName({ prenom: row.contact_prenom, nom: row.contact_nom }) || "(sans nom)";
         const label = EVENT_TITLES[row.event_type] ?? row.event_type;
         const title = `${label} — ${clientName}`;
-        // Montant used to be baked into the title itself (the only info
-        // .ics viewers had beyond the client name) - now that the title
-        // must match the exact per-type gabarit above, it moves here
-        // instead of disappearing outright. Relance-only: the other 4
-        // types aren't about a dollar amount.
-        const description =
-          row.event_type === "relance" && row.montant !== null
-            ? `Fiche du deal : ${origin}/?deal=${row.deal_id}\nMontant : ${formatCurrency(row.montant)}`
-            : `Fiche du deal : ${origin}/?deal=${row.deal_id}`;
+        // No montant, deliberately: the feed is fetched and stored by
+        // Microsoft's servers (Outlook subscription), so it carries only
+        // what the rep needs to recognize the event - the amount stays in
+        // the CRM, one click away through the deal link.
+        const description = `Fiche du deal : ${origin}/?deal=${row.deal_id}`;
 
         // Unique per (deal, event_type), not just deal_id - a single deal
         // can now have up to 5 of these simultaneously (e.g. a relance AND
