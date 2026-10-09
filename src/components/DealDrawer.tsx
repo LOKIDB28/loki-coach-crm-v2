@@ -5,10 +5,12 @@ import {
   Archive,
   ArchiveRestore,
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   History,
+  Info,
   XCircle,
   X,
 } from "lucide-react";
@@ -43,6 +45,7 @@ import {
   type TravauxEntretien,
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
+import { hasUpcomingCalendarDate } from "@/lib/calendar";
 import { formatPhone } from "@/lib/phone";
 import { IMPORT_BADGE_COLOR } from "@/lib/theme";
 import type {
@@ -575,6 +578,27 @@ export function DealDrawer({
   const targetPrevStage = openStages[openIndex - 1];
   const prevBlockedByContact = targetPrevStage?.id === prospectStage?.id && Boolean(localDeal.premier_contact_le);
   const rencontreStage = stageByCode("rencontre");
+
+  // Outlook guard-rails - computed from the section drafts, so a date typed
+  // but not saved yet already counts. The .ics feed is per representative
+  // (get_calendar_feed, 0030): a deal with no owner_id is in nobody's feed.
+  const showNoOwnerNote =
+    !localDeal.owner_id &&
+    hasUpcomingCalendarDate({
+      next_action_at: section3.next_action_at,
+      date_essai_routier: section3.date_essai_routier,
+      date_visite_usine: section3.date_visite_usine,
+      date_visite_bureau: section3.date_visite_bureau,
+      date_rdv_service: section6.date_rdv_service,
+    });
+  // The "Rencontre" stage itself creates no Outlook event - only its dates do.
+  const showRencontreStageNote =
+    !!rencontreStage &&
+    localDeal.stage_id === rencontreStage.id &&
+    !section3.next_action_at &&
+    !section3.date_visite_usine &&
+    !section3.date_visite_bureau &&
+    !section3.date_essai_routier;
   const propositionStage = stageByCode("proposition");
   const negociationStage = stageByCode("negociation");
   const gagneStage = stageByCode("gagne");
@@ -1033,6 +1057,17 @@ export function DealDrawer({
                     </option>
                   ))}
               </Select>
+              {/* Always mounted, so a screen reader announces the note when
+                  it appears (polite live region); the text itself is plain
+                  text in the flow, the icon is decorative. */}
+              <div role="status">
+                {showNoOwnerNote && (
+                  <p className="flex items-start gap-1.5 text-[11px] text-textSoft mt-1">
+                    <Info size={12} aria-hidden="true" className="shrink-0 mt-px" />
+                    Sans représentant, ce rendez-vous n&apos;apparaîtra dans aucun calendrier Outlook.
+                  </p>
+                )}
+              </div>
             </Field>
           </div>
 
@@ -1392,8 +1427,29 @@ export function DealDrawer({
               active={localDeal.stage_id === rencontreStage?.id}
               defaultOpen={localDeal.stage_id === rencontreStage?.id}
             >
+              <p className="flex items-start gap-1.5 text-[11px] text-textSoft">
+                <CalendarDays size={12} aria-hidden="true" className="shrink-0 mt-px" />
+                Ces dates vont dans le calendrier Outlook du représentant assigné : Relance, Visite d&apos;usine, Visite au
+                bureau, Essai routier.
+              </p>
+              <div role="status">
+                {showRencontreStageNote && (
+                  <p className="flex items-start gap-1.5 text-[11px] text-textSoft">
+                    <Info size={12} aria-hidden="true" className="shrink-0 mt-px" />
+                    Passer à l&apos;étape Rencontre ne crée pas d&apos;événement dans Outlook. Ajoute une visite d&apos;usine,
+                    une visite au bureau ou un essai routier pour qu&apos;il apparaisse.
+                  </p>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Date de suivi">
+                <Field
+                  label={
+                    <>
+                      Date de suivi
+                      <OutlookMark />
+                    </>
+                  }
+                >
                   <TextInput
                     type="datetime-local"
                     value={toDatetimeLocalValue(section3.next_action_at)}
@@ -1425,7 +1481,14 @@ export function DealDrawer({
                 {/* Two distinct rendez-vous types, not one field for both -
                     the factory carries different on-site security rules
                     than the office, per conversation. */}
-                <Field label="Date visite d'usine (accès sécurisé)">
+                <Field
+                  label={
+                    <>
+                      Date visite d&apos;usine (accès sécurisé)
+                      <OutlookMark />
+                    </>
+                  }
+                >
                   <TextInput
                     type="datetime-local"
                     value={toDatetimeLocalValue(section3.date_visite_usine)}
@@ -1438,7 +1501,14 @@ export function DealDrawer({
                     }
                   />
                 </Field>
-                <Field label="Date visite au bureau">
+                <Field
+                  label={
+                    <>
+                      Date visite au bureau
+                      <OutlookMark />
+                    </>
+                  }
+                >
                   <TextInput
                     type="datetime-local"
                     value={toDatetimeLocalValue(section3.date_visite_bureau)}
@@ -1451,7 +1521,14 @@ export function DealDrawer({
                     }
                   />
                 </Field>
-                <Field label="Date essai routier">
+                <Field
+                  label={
+                    <>
+                      Date essai routier
+                      <OutlookMark />
+                    </>
+                  }
+                >
                   <TextInput
                     type="datetime-local"
                     value={toDatetimeLocalValue(section3.date_essai_routier)}
@@ -1531,7 +1608,14 @@ export function DealDrawer({
                     onChange={(e) => setSection6((s) => ({ ...s, numero_contrat: e.target.value, dirty: true }))}
                   />
                 </Field>
-                <Field label="Date du 1er rendez-vous service">
+                <Field
+                  label={
+                    <>
+                      Date du 1er rendez-vous service
+                      <OutlookMark allDay />
+                    </>
+                  }
+                >
                   <TextInput
                     type="date"
                     value={section6.date_rdv_service ?? ""}
@@ -1539,6 +1623,7 @@ export function DealDrawer({
                       setSection6((s) => ({ ...s, date_rdv_service: e.target.value || null, dirty: true }))
                     }
                   />
+                  <p className="text-[11px] text-textSoft mt-1">Va dans Outlook, journée entière.</p>
                 </Field>
               </div>
               <SaveSectionButton dirty={section6.dirty} saving={section6.saving} onClick={saveSection6} />
@@ -1572,6 +1657,20 @@ export function DealDrawer({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Marks a date field whose value goes into the representative's Outlook
+ * (.ics feed). Not a button: an image with an accessible name and a hover
+ * title, next to the field's label.
+ */
+function OutlookMark({ allDay = false }: { allDay?: boolean }) {
+  const label = allDay ? "Va dans Outlook, journée entière" : "Va dans le calendrier Outlook";
+  return (
+    <span role="img" aria-label={label} title={label} className="inline-flex align-[-1px] ml-1 text-textSoft">
+      <CalendarDays size={12} aria-hidden="true" />
+    </span>
   );
 }
 

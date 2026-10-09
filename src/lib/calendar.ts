@@ -53,6 +53,25 @@ function parseDateOnly(value: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
+/**
+ * True when at least one of the .ics feed's dates is today or later
+ * (local time) - a timed value counts from midnight today, a date-only one
+ * (date_rdv_service) compares as a calendar date. Drives the drawer's
+ * "no representative" note: a past date wouldn't be worth warning about.
+ */
+export function hasUpcomingCalendarDate(
+  values: Partial<Record<CalendarEventType, string | null>>,
+  now: Date = new Date()
+): boolean {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return EVENT_TYPES.some((type) => {
+    const raw = values[type.key];
+    if (!raw) return false;
+    const date = type.allDay ? parseDateOnly(raw) : new Date(raw);
+    return !Number.isNaN(date.getTime()) && date >= startOfToday;
+  });
+}
+
 export function buildCalendarEvents(deals: DealWithContact[]): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   for (const deal of deals) {
