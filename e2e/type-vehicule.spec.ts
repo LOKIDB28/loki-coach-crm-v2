@@ -133,3 +133,66 @@ test("tiroir (lecture seule) : « Véhicule en échange ? » visible pour chaque
 
   expect(writes).toEqual([]);
 });
+
+test("tiroir (lecture seule) : fiche sans numéro d'unité, modifier le type et enregistrer envoie la requête sans erreur", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (err) => pageErrors.push(err.message));
+  const sent: { method: string; path: string; body: Record<string, unknown> | null }[] = [];
+  await page.route("**/rest/v1/**", (route) => {
+    const req = route.request();
+    if (req.method() === "GET" || req.method() === "HEAD") return route.continue();
+    let body: Record<string, unknown> | null = null;
+    try {
+      body = req.postDataJSON();
+    } catch {
+      body = null;
+    }
+    sent.push({ method: req.method(), path: new URL(req.url()).pathname, body });
+    return route.abort();
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Vue grille" }).click();
+  await expect(page.getByTestId("deal-card").first()).toBeVisible();
+
+  const unitField = page.locator(`div:has(> label:text-is("Numéro d'unité (temporaire)")) input`).first();
+  const typeSelect = page.locator('div:has(> label:text-is("Type de véhicule visé")) select').first();
+  const section1 = page.getByRole("button", { name: /^1 · / });
+
+  // First deal with no linked coach (the unit field only exists then) and an
+  // empty unit number - never printed, only its emptiness is checked.
+  const cards = page.getByTestId("deal-card");
+  const maxTries = Math.min(await cards.count(), 40);
+  let found = false;
+  for (let i = 0; i < maxTries && !found; i++) {
+    await cards.nth(i).click();
+    await expect(page.getByRole("button", { name: "Fermer" })).toBeVisible();
+    const collapsed = await section1
+      .locator("xpath=following-sibling::div[1]")
+      .evaluate((el) => el.className.includes("grid-rows-[0fr]"));
+    if (collapsed) await section1.click();
+    if ((await unitField.count()) > 0 && (await unitField.inputValue()) === "") {
+      found = true;
+      break;
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Fermer" })).toBeHidden();
+  }
+  expect(found, "aucune fiche sans coach lié ni numéro d'unité parmi les 40 premières").toBe(true);
+
+  // Change another field of the section, then save it.
+  const current = await typeSelect.inputValue();
+  const next = current === "vehicle_special" ? "used" : "vehicle_special";
+  await typeSelect.selectOption(next);
+  await page.locator("button:enabled", { hasText: /^Enregistrer$/ }).first().click();
+
+  // The deal PATCH was built and sent (aborted here) - .trim() on the empty
+  // unit number didn't throw, and it goes out as null.
+  await expect.poll(() => sent.filter((w) => w.method === "PATCH" && w.path.endsWith("/rest/v1/deals")).length).toBe(1);
+  const dealPatch = sent.find((w) => w.method === "PATCH" && w.path.endsWith("/rest/v1/deals"))!;
+  expect(dealPatch.body?.numero_unite_libre).toBeNull();
+  expect(dealPatch.body?.type_vehicule_vise).toBe(next);
+  expect(pageErrors).toEqual([]);
+});
