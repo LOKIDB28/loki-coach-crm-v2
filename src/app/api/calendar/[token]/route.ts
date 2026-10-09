@@ -32,8 +32,8 @@ const EVENT_TITLES: Record<string, string> = {
  * version), never on demand - see the help text in app/settings/page.tsx.
  *
  * Uses the plain anon-key client (no cookies - there's no session to
- * carry) and the get_calendar_feed() RPC from migration 0019 (originally
- * 0014, extended from relance-only to all 5 event types), which is a
+ * carry) and the get_calendar_feed() RPC (created in 0014, extended to all
+ * 5 event types in 0019, token lookup moved to calendar_tokens in 0030), which is a
  * SECURITY DEFINER function - the anon key itself has no direct table
  * access to deals/contacts/profiles beyond what that one narrow function
  * exposes.

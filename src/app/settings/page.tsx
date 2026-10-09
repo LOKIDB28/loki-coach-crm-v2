@@ -55,8 +55,9 @@ export default function SettingsPage() {
       setError(null);
       try {
         // get_my_calendar_token() only ever returns the caller's own token
-        // (auth.uid()) - see migration 0014. There's no table SELECT on
-        // profiles.calendar_token at all, by design.
+        // (auth.uid()). Tokens live in public.calendar_tokens (migration
+        // 0030), whose RLS lets each user read their own row only -
+        // profiles.calendar_token is obsolete and always null.
         const { data, error: rpcError } = await supabase.rpc("get_my_calendar_token");
         if (rpcError) throw rpcError;
         if (!data) throw new Error("Aucun token trouvé pour ce profil.");
@@ -83,8 +84,9 @@ export default function SettingsPage() {
     setRegenStep("busy");
     setRegenError(null);
     try {
-      // regenerate_my_calendar_token() (migration 0029) only ever touches
-      // the caller's own profiles row and returns the new token. The token
+      // regenerate_my_calendar_token() (0029, redefined in 0030) only ever
+      // touches the caller's own calendar_tokens row and returns the new
+      // token. The token
       // is the feed's sole credential: it goes straight into feedUrl and
       // nowhere else - never logged, never put in an error message (the
       // catch below shows a fixed string, not the RPC error), so nothing
