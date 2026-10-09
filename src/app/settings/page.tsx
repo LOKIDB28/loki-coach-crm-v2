@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Copy } from "lucide-react";
+import { ArrowLeft, Check, Copy, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/format";
+import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -17,6 +18,16 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [feedUrl, setFeedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // "Régénérer mon lien": idle → confirm (inline banner, same grammar as
+  // DealDrawer's "Marquer perdu" confirmation) → busy (RPC in flight) →
+  // back to idle with either regenDone or regenError set.
+  const [regenStep, setRegenStep] = useState<"idle" | "confirm" | "busy">("idle");
+  const [regenDone, setRegenDone] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
+  // Focused when the confirmation opens - Annuler, not Confirmer, so an
+  // accidental Enter doesn't invalidate the rep's current link (same rule
+  // as NewDealModal's close-without-saving banner).
+  const regenCancelRef = useRef<HTMLButtonElement>(null);
   // null until the effect below runs client-side - getStoredThemePreference
   // reads localStorage, which doesn't exist during server render. The
   // "revenir au réglage de l'ordinateur" link only ever needs to appear
@@ -57,6 +68,40 @@ export default function SettingsPage() {
       }
     })();
   }, [supabase]);
+
+  useEffect(() => {
+    if (regenStep === "confirm") regenCancelRef.current?.focus({ preventScroll: true });
+  }, [regenStep]);
+
+  function armRegenerate() {
+    setRegenError(null);
+    setRegenDone(false);
+    setRegenStep("confirm");
+  }
+
+  async function confirmRegenerate() {
+    setRegenStep("busy");
+    setRegenError(null);
+    try {
+      // regenerate_my_calendar_token() (migration 0029) only ever touches
+      // the caller's own profiles row and returns the new token. The token
+      // is the feed's sole credential: it goes straight into feedUrl and
+      // nowhere else - never logged, never put in an error message (the
+      // catch below shows a fixed string, not the RPC error), so nothing
+      // here can carry it to the console or to Sentry.
+      const { data, error: rpcError } = await supabase.rpc("regenerate_my_calendar_token");
+      if (rpcError || typeof data !== "string" || !data) throw new Error("regenerate failed");
+      setFeedUrl(`${window.location.origin}/api/calendar/${data}.ics`);
+      setCopied(false);
+      setRegenDone(true);
+    } catch {
+      // Deliberately not "your old link still works": if the response was
+      // lost after the database committed, the old link is already dead.
+      setRegenError("Le lien n'a pas pu être régénéré. Recharge la page pour voir le lien actuel, puis réessaie.");
+    } finally {
+      setRegenStep("idle");
+    }
+  }
 
   async function handleCopy() {
     if (!feedUrl) return;
@@ -169,6 +214,58 @@ export default function SettingsPage() {
                 Ce lien est personnel : il donne accès à tes dossiers et aux noms de tes clients, sans mot de passe.
                 Ne le partage pas.
               </p>
+
+              <div className="border-t border-border/15 pt-4 space-y-3">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <p className="text-[11px] text-textSoft">Lien partagé par erreur ? Remplace-le par un nouveau lien.</p>
+                  <Button
+                    variant="destructive"
+                    size="compact"
+                    disabled={regenStep !== "idle"}
+                    onClick={armRegenerate}
+                  >
+                    <RefreshCw size={14} /> Régénérer mon lien
+                  </Button>
+                </div>
+
+                {regenStep !== "idle" && (
+                  <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-3.5 py-3 space-y-2">
+                    <p className="text-sm text-text">
+                      L&apos;ancien lien cessera de fonctionner. Il faudra supprimer l&apos;ancien calendrier dans Outlook et
+                      t&apos;abonner au nouveau lien.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={regenStep === "busy"}
+                        onClick={confirmRegenerate}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
+                      >
+                        {regenStep === "busy" && <Spinner size={11} />}
+                        {regenStep === "busy" ? "En cours…" : "Confirmer"}
+                      </button>
+                      <button
+                        ref={regenCancelRef}
+                        type="button"
+                        disabled={regenStep === "busy"}
+                        onClick={() => setRegenStep("idle")}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/20 text-textSoft hover:text-text disabled:opacity-50"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {regenError && <ErrorBanner message={regenError} />}
+
+                {regenDone && (
+                  <p role="status" className="text-xs text-text">
+                    Nouveau lien créé, l&apos;ancien ne fonctionne plus. Dans Outlook, supprime l&apos;ancien calendrier,
+                    puis abonne-toi au lien ci-dessus.
+                  </p>
+                )}
+              </div>
             </>
           ) : null}
         </section>
