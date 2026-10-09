@@ -515,8 +515,9 @@ function DashboardPageInner() {
       const owner = d.owner_id ? profileById.get(d.owner_id) : null;
       return [
         fullName(d.contact),
-        // Formatted and formula-neutralized (leading apostrophe) - see
-        // phoneForCsv. The other text columns are exported as-is.
+        // Formatted and never readable as a formula ("1-418-…", "(+52) …",
+        // apostrophe only as a last resort) - see phoneForCsv. The other
+        // text columns are exported as-is.
         phoneForCsv(d.contact.telephone),
         d.contact.email ?? "",
         d.contact.ville ?? "",

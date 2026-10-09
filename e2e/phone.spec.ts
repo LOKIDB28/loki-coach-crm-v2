@@ -92,13 +92,24 @@ test("doublons : numéro principal (« 1 » retiré) et extension comparés sép
   }
 });
 
-test("export CSV : téléphone formaté, jamais interprété comme une formule, aucun caractère perdu", () => {
-  expect(phoneForCsv("(418) 805-5602")).toBe("'+1-418-805-5602");
-  expect(phoneForCsv("418-805-5602 poste 7")).toBe("'+1-418-805-5602 x7");
-  expect(phoneForCsv("+52 55 1234 5678")).toBe("'+52 55 1234 5678");
+test("export CSV : téléphone lisible comme du texte, jamais interprété comme une formule", () => {
+  // 1. +1 numbers: no "+".
+  expect(phoneForCsv("(418) 805-5602")).toBe("1-418-805-5602");
+  expect(phoneForCsv("418-805-5602 poste 7")).toBe("1-418-805-5602 x7");
+  // 2. Other "+CC rest" numbers: country code in parentheses.
+  expect(phoneForCsv("+52 55 1234 5678")).toBe("(+52) 55 1234 5678");
+  expect(phoneForCsv("+33 1 23 45 67 89")).toBe("(+33) 1 23 45 67 89");
+  // 3. Apostrophe only as a last resort.
+  expect(phoneForCsv("+4188055602")).toBe("'+4188055602");
   expect(phoneForCsv("=1+1")).toBe("'=1+1");
   expect(phoneForCsv("@SUM(A1)")).toBe("'@SUM(A1)");
   expect(phoneForCsv("-5602")).toBe("'-5602");
+  // Untouched when already safe.
   expect(phoneForCsv("805-5602")).toBe("805-5602");
   expect(phoneForCsv(null)).toBe("");
+});
+
+test("export CSV : aucune cellule Téléphone ne commence par =, +, -, @, tabulation ou retour chariot", () => {
+  const inputs = [...CASES.map(([input]) => input), "=1+1", "@SUM(A1)", "-5602", "+1-418-805-560", "\t=1", "\r+1"];
+  for (const input of inputs) expect(phoneForCsv(input), JSON.stringify(input)).not.toMatch(/^[=+\-@\t\r]/);
 });

@@ -78,15 +78,34 @@ export function phoneMatchesQuery(phone: string | null | undefined, query: strin
   return phoneDigits(phone).includes(qDigits) || phoneDigits(formatPhone(phone)).includes(qDigits);
 }
 
+/** A North American number exactly as formatPhone writes it, extension optional. */
+const FORMATTED_NANP = /^\+1-\d{3}-\d{3}-\d{4}( x\d+)?$/;
+
+/** "+CC rest": a 1-3 digit country code followed by a space. */
+const COUNTRY_CODE_THEN_SPACE = /^\+(\d{1,3}) (.+)$/;
+
 /**
- * Phone cell for the CSV export: formatted, then neutralized against
- * spreadsheet formula injection. A cell starting with = + - @ (or a tab /
- * carriage return) can be evaluated as a formula by spreadsheet apps (Excel
- * notably) - "+1-418-805-5602" could open as -6824. Prefixed with a single
- * apostrophe (OWASP's CSV-injection remediation): every character of the
- * number is kept, the "+" country code included.
+ * Phone cell for the CSV export, never read as a formula by a spreadsheet.
+ * A cell starting with = + - @ (or a tab / carriage return) can be
+ * evaluated as one - in Excel, an unprotected "+1-418-805-5602" displays
+ * as -6824. Both shapes below were checked by LP in Excel: they display as
+ * plain text, with nothing added in front.
+ *   1. +1 numbers drop the "+": "1-418-805-5602" (extension kept).
+ *   2. Other "+CC rest" numbers put the code in parentheses:
+ *      "(+52) 55 1234 5678".
+ *   3. Last resort only - anything that still starts with one of those
+ *      characters (e.g. the ambiguous "+4188055602") gets a leading
+ *      apostrophe, which Excel does display, but which keeps every
+ *      character.
  */
 export function phoneForCsv(input: string | null | undefined): string {
   const formatted = formatPhone(input);
-  return /^[=+\-@\t\r]/.test(formatted) ? `'${formatted}` : formatted;
+  let cell = formatted;
+  if (FORMATTED_NANP.test(formatted)) {
+    cell = formatted.slice(1);
+  } else {
+    const cc = formatted.match(COUNTRY_CODE_THEN_SPACE);
+    if (cc) cell = `(+${cc[1]}) ${cc[2]}`;
+  }
+  return /^[=+\-@\t\r]/.test(cell) ? `'${cell}` : cell;
 }
