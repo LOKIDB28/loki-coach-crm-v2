@@ -173,16 +173,6 @@ button:active {
   box-shadow: 0 0 0 2px rgb(0 166 96); /* teal, see tailwind.config.ts */
 }
 
-/* UnitPicker (numero_unite_libre scroll wheel) - hides the native scrollbar
-   so the mask-image fade at the top/bottom edges reads as the picker's own
-   edge, not a scrollbar sitting on top of it. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
 /*
  * Glass (translucent + blurred) materials - exactly two categories, never a
  * third: a dimmed backdrop behind a modal/drawer (.glass-scrim, NewDealModal

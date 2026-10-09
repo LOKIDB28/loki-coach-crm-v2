@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Clock, Mail, MapPin, Phone } from "lucide-react";
-import { fullName, interetColor } from "@/lib/domain";
+import { fullName, interetColor, typeVehiculeInfo } from "@/lib/domain";
 import { daysOverdue, daysSince, formatCurrency, formatDateTime, isOverdue, isWithinHours } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { LEAD_AGE_COLORS } from "@/lib/theme";
@@ -19,6 +19,7 @@ interface DealCardProps {
 export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, onOpen }: DealCardProps) {
   const { contact } = deal;
   const name = fullName(contact) || "(sans nom)";
+  const typeInfo = typeVehiculeInfo(deal.type_vehicule_vise);
 
   const stageBadgeClass =
     stage?.code === "gagne"
@@ -142,17 +143,23 @@ export function DealCard({ deal, stage, ownerName, hasClientDupe, hasCoachDupe, 
         {/* Same dot+label language as niveau_interet just below - stacked in
             the same corner rather than a new row, so the card only grows
             taller when both happen to be present at once. Filled teal dot
-            for "neuf", teal outline/transparent fill for "usager" - null
-            renders nothing, no default badge. */}
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          {deal.type_vehicule_vise && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-textSoft">
+            for the Neuf group, teal outline for Used, neutral textSoft dot
+            for Entertainer/Special/unknown - null renders nothing, no
+            default badge. The short label can truncate on a narrow card;
+            the full label is always in the hover title. */}
+        <div className="flex flex-col items-end gap-1 shrink-0 max-w-[65%]">
+          {typeInfo && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-textSoft max-w-full" title={typeInfo.label}>
               <span
-                className={`inline-block w-2 h-2 rounded-full ${
-                  deal.type_vehicule_vise === "neuf" ? "bg-teal" : "bg-transparent border border-teal"
+                className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                  typeInfo.group === "neuf"
+                    ? "bg-teal"
+                    : typeInfo.group === "used"
+                      ? "bg-transparent border border-teal"
+                      : "bg-textSoft"
                 }`}
               />
-              {deal.type_vehicule_vise === "neuf" ? "NEUF" : "USAGÉ"}
+              <span className="truncate">{typeInfo.cardLabel}</span>
             </span>
           )}
           {deal.niveau_interet && (

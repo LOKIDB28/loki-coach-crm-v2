@@ -145,8 +145,10 @@ export interface Deal {
   // stage_id/pipeline_stages.probability, not a replacement for either.
   rate_percent: number | null;
 
-  // Added by 0011_add_deal_qualification_fields.sql.
-  type_vehicule_vise: "neuf" | "usager" | null;
+  // Added by 0011_add_deal_qualification_fields.sql. Free text since 0031
+  // dropped its CHECK constraint - known values and labels live in
+  // lib/domain.ts (TYPE_VEHICULE_OPTIONS, plus the legacy 'neuf'/'usager').
+  type_vehicule_vise: string | null;
   numero_unite_libre: string | null;
 
   // Added by 0012_add_source_import.sql - provenance marker (e.g.
