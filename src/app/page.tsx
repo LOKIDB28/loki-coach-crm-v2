@@ -54,10 +54,16 @@ import {
   findCoachMatchesForDeal,
   fullName,
   getDistinctSourcesWithCounts,
+  getTypeFilterCounts,
   INTERETS,
   matchesSourceFilter,
+  matchesTypeFilter,
+  TYPE_FILTERS,
+  typeVehiculeInfo,
+  type TypeFilterKey,
 } from "@/lib/domain";
 import { getErrorMessage } from "@/lib/format";
+import { neutralizeCsvFormula } from "@/lib/csv";
 import { phoneForCsv, phoneMatchesQuery } from "@/lib/phone";
 import { INTELLIGENCE_YELLOW } from "@/lib/theme";
 import { effectiveViewLayout, type ViewLayout } from "@/lib/view";
@@ -70,6 +76,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SourceFilterDropdown } from "@/components/ui/SourceFilterDropdown";
+import { TypeFilterDropdown } from "@/components/ui/TypeFilterDropdown";
 import { useEffectiveTheme } from "@/lib/use-effective-theme";
 import { POPOVER_CHROME } from "@/lib/ui";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
@@ -146,6 +153,8 @@ function DashboardPageInner() {
   // null = "Toutes" (no filter), "" = "Sans source" (the no-source bucket),
   // otherwise the exact contacts.source label.
   const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null);
+  // null = "Tous". Groups deals.type_vehicule_vise values - see TYPE_FILTERS.
+  const [activeTypeFilter, setActiveTypeFilter] = useState<TypeFilterKey | null>(null);
   const [groupByInterest, setGroupByInterest] = useState(false);
   const [dupesOnly, setDupesOnly] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
@@ -510,14 +519,15 @@ function DashboardPageInner() {
    * backup which re-pulls every row.
    */
   function handleExportCsv() {
-    const headers = ["Client", "Téléphone", "Courriel", "Ville", "Étape", "Montant", "Canal", "Source", "Représentant"];
+    // "Type" appended last, so the existing columns keep their positions.
+    const headers = ["Client", "Téléphone", "Courriel", "Ville", "Étape", "Montant", "Canal", "Source", "Représentant", "Type"];
     const rows = filteredDeals.map((d) => {
       const owner = d.owner_id ? profileById.get(d.owner_id) : null;
       return [
         fullName(d.contact),
         // Formatted and never readable as a formula ("1-418-…", "(+52) …",
-        // apostrophe only as a last resort) - see phoneForCsv. The other
-        // text columns are exported as-is.
+        // apostrophe only as a last resort) - see phoneForCsv. Type (last
+        // column) is protected too; the other text columns are exported as-is.
         phoneForCsv(d.contact.telephone),
         d.contact.email ?? "",
         d.contact.ville ?? "",
@@ -531,6 +541,8 @@ function DashboardPageInner() {
         // only one of the two ever populated.
         d.contact.source ?? d.source ?? "",
         d.owner_id ? owner?.nom || owner?.email || "" : "Non assigné",
+        // Displayed label, same formula protection as Téléphone.
+        neutralizeCsvFormula(typeVehiculeInfo(d.type_vehicule_vise)?.label ?? ""),
       ];
     });
     const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
@@ -585,6 +597,7 @@ function DashboardPageInner() {
   // regardless of which OTHER filters (stage/owner/search) are currently
   // active, same reasoning as those two.
   const sourceCounts = useMemo(() => getDistinctSourcesWithCounts(visibleDeals), [visibleDeals]);
+  const typeCounts = useMemo(() => getTypeFilterCounts(visibleDeals), [visibleDeals]);
 
   // Owner ids with at least one non-archived deal - deliberately from the
   // full `deals` list, not `visibleDeals`, so this stays the same set
@@ -648,6 +661,7 @@ function DashboardPageInner() {
       // matching logic itself.
       if (dupesOnly && !dupeClientIds.has(d.id) && !dupeCoachIds.has(d.id)) return false;
       if (!matchesSourceFilter(d.contact.source, activeSourceFilter)) return false;
+      if (!matchesTypeFilter(d.type_vehicule_vise, activeTypeFilter)) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
@@ -664,7 +678,17 @@ function DashboardPageInner() {
       }
       return true;
     });
-  }, [visibleDeals, activeStage, activeOwnerIds, search, dupesOnly, dupeClientIds, dupeCoachIds, activeSourceFilter]);
+  }, [
+    visibleDeals,
+    activeStage,
+    activeOwnerIds,
+    search,
+    dupesOnly,
+    dupeClientIds,
+    dupeCoachIds,
+    activeSourceFilter,
+    activeTypeFilter,
+  ]);
 
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
@@ -685,6 +709,7 @@ function DashboardPageInner() {
     return visibleDeals.filter((d) => {
       if (activeOwnerIds.length > 0 && (!d.owner_id || !activeOwnerIds.includes(d.owner_id))) return false;
       if (!matchesSourceFilter(d.contact.source, activeSourceFilter)) return false;
+      if (!matchesTypeFilter(d.type_vehicule_vise, activeTypeFilter)) return false;
       if (q) {
         const name = fullName(d.contact).toLowerCase();
         const email = (d.contact.email ?? "").toLowerCase();
@@ -701,7 +726,7 @@ function DashboardPageInner() {
       }
       return true;
     });
-  }, [visibleDeals, activeOwnerIds, search, activeSourceFilter]);
+  }, [visibleDeals, activeOwnerIds, search, activeSourceFilter, activeTypeFilter]);
 
   return (
     <div className="min-h-screen">
@@ -1041,6 +1066,7 @@ function DashboardPageInner() {
                   source never shifts just because another filter narrowed
                   the current view. */}
               <SourceFilterDropdown sources={sourceCounts} active={activeSourceFilter} onSelect={setActiveSourceFilter} />
+              <TypeFilterDropdown counts={typeCounts} active={activeTypeFilter} onSelect={setActiveTypeFilter} />
 
               {/* activeStage's chip is grid-only (kanban already shows every
                   stage as a column - keeping the chip visible in kanban
@@ -1050,7 +1076,8 @@ function DashboardPageInner() {
               {((layout === "grid" && activeStage !== null) ||
                 activeOwnerIds.length > 0 ||
                 search ||
-                activeSourceFilter !== null) && (
+                activeSourceFilter !== null ||
+                activeTypeFilter !== null) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {layout === "grid" && activeStage !== null && (
                     <Chip label={`Étape: ${stageById.get(activeStage)?.label}`} onClear={() => setActiveStage(null)} />
@@ -1067,6 +1094,12 @@ function DashboardPageInner() {
                     <Chip
                       label={`Source: ${activeSourceFilter === "" ? "Sans source" : activeSourceFilter}`}
                       onClear={() => setActiveSourceFilter(null)}
+                    />
+                  )}
+                  {activeTypeFilter !== null && (
+                    <Chip
+                      label={`Type: ${TYPE_FILTERS.find((f) => f.key === activeTypeFilter)?.label}`}
+                      onClear={() => setActiveTypeFilter(null)}
                     />
                   )}
                 </div>

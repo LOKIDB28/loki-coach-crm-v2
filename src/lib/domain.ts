@@ -55,7 +55,7 @@ export const SOURCE_SUGGESTIONS = [
   "Événement sportif",
   "Walk-in",
   "Référence interne",
-  "Indie",
+  "IndyCar",
   "Nascar",
   "PGA",
   "Golf",
@@ -187,6 +187,80 @@ export function matchesSourceFilter(contactSource: string | null, activeFilter: 
   if (activeFilter === "") return !hasSource;
   if (!hasSource) return false;
   return normalizeSourceKey(contactSource) === normalizeSourceKey(activeFilter);
+}
+
+/**
+ * deals.type_vehicule_vise - stable stored values (never shown as-is) with
+ * their labels. Validated here only: 0031 dropped the database CHECK
+ * constraint. `cardLabel` is the short uppercase form on DealCard; the full
+ * `label` is used everywhere else (drawer, CSV export, card hover title).
+ */
+export const TYPE_VEHICULE_OPTIONS = [
+  { value: "neuf_bath_half", label: "Neuf-Bath/Half", cardLabel: "NEUF · BATH/HALF", group: "neuf" },
+  { value: "neuf_bunk", label: "Neuf-Bunk", cardLabel: "NEUF · BUNK", group: "neuf" },
+  { value: "used", label: "Used", cardLabel: "USED", group: "used" },
+  { value: "entertainer_star_coach", label: "Entertainer - Star Coach", cardLabel: "ENTERTAINER · STAR COACH", group: "entertainer" },
+  { value: "entertainer_bunk", label: "Entertainer - Bunk", cardLabel: "ENTERTAINER · BUNK", group: "entertainer" },
+  { value: "vehicle_special", label: "Vehicle Special", cardLabel: "SPECIAL", group: "special" },
+] as const;
+
+export type TypeVehiculeGroup = (typeof TYPE_VEHICULE_OPTIONS)[number]["group"];
+
+/**
+ * The two values stored before TYPE_VEHICULE_OPTIONS existed - still read,
+ * shown and filtered until LP migrates them by hand. Never offered for a
+ * new choice: the drawer only lists one when the deal already has it.
+ */
+export const LEGACY_TYPE_VEHICULE = [
+  { value: "neuf", label: "Neuf (ancien, à préciser)", cardLabel: "NEUF", group: "neuf" },
+  { value: "usager", label: "Used (ancien « usager »)", cardLabel: "USED", group: "used" },
+] as const;
+
+export interface TypeVehiculeInfo {
+  label: string;
+  cardLabel: string;
+  /** null for a value that's neither current nor legacy - shown as stored, only matched by "Tous". */
+  group: TypeVehiculeGroup | null;
+  legacy: boolean;
+}
+
+/** Display info for a stored value; null when the deal has no type. An unknown value is shown as stored, never hidden. */
+export function typeVehiculeInfo(value: string | null | undefined): TypeVehiculeInfo | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  const current = TYPE_VEHICULE_OPTIONS.find((o) => o.value === v);
+  if (current) return { label: current.label, cardLabel: current.cardLabel, group: current.group, legacy: false };
+  const old = LEGACY_TYPE_VEHICULE.find((o) => o.value === v);
+  if (old) return { label: old.label, cardLabel: old.cardLabel, group: old.group, legacy: true };
+  return { label: v, cardLabel: v.toUpperCase(), group: null, legacy: false };
+}
+
+/** Toolbar "Type" filter buckets, in display order. "none" = no type at all. */
+export const TYPE_FILTERS = [
+  { key: "neuf", label: "Neuf", hint: "Bath/Half, Bunk, ancien « neuf »" },
+  { key: "used", label: "Used", hint: "y compris l'ancien « usager »" },
+  { key: "entertainer", label: "Entertainer", hint: "Star Coach, Bunk" },
+  { key: "special", label: "Special", hint: "" },
+  { key: "none", label: "Sans type", hint: "" },
+] as const;
+
+export type TypeFilterKey = (typeof TYPE_FILTERS)[number]["key"];
+
+/** null filter = "Tous". Reads deals.type_vehicule_vise only - never the trade-in (echange_*) fields. */
+export function matchesTypeFilter(value: string | null | undefined, filter: TypeFilterKey | null): boolean {
+  if (filter === null) return true;
+  const info = typeVehiculeInfo(value);
+  if (filter === "none") return info === null;
+  return info?.group === filter;
+}
+
+/** Count per TYPE_FILTERS bucket among the given deals. */
+export function getTypeFilterCounts(deals: Pick<Deal, "type_vehicule_vise">[]): Record<TypeFilterKey, number> {
+  const counts = Object.fromEntries(TYPE_FILTERS.map((f) => [f.key, 0])) as Record<TypeFilterKey, number>;
+  for (const d of deals) {
+    for (const f of TYPE_FILTERS) if (matchesTypeFilter(d.type_vehicule_vise, f.key)) counts[f.key]++;
+  }
+  return counts;
 }
 
 // Fixed display order for the 5 real internal team members, confirmed in

@@ -19,7 +19,6 @@ import { TextArea } from "./ui/TextArea";
 import { Select } from "./ui/Select";
 import { Button } from "./ui/Button";
 import { CurrencyInput } from "./ui/CurrencyInput";
-import { UnitPicker } from "./ui/UnitPicker";
 import { Spinner } from "./ui/Spinner";
 import { ErrorBanner } from "./ui/ErrorBanner";
 import { Section } from "./Section";
@@ -39,6 +38,8 @@ import {
   REP_TAB_ORDER,
   stageIcon,
   TRAVAUX_ENTRETIEN_OPTIONS,
+  TYPE_VEHICULE_OPTIONS,
+  typeVehiculeInfo,
   type TravauxEntretien,
 } from "@/lib/domain";
 import { formatCurrency, formatDateTime, fromDatetimeLocalValue, getErrorMessage, toDatetimeLocalValue } from "@/lib/format";
@@ -361,6 +362,7 @@ export function DealDrawer({
 
   const clientDupes = findClientMatchesForDeal(deal, allDeals, deal.id);
   const coachDupes = findCoachMatchesForDeal({ coach_vise: section1.coach_vise }, allDeals, deal.id);
+  const currentTypeInfo = typeVehiculeInfo(section1.type_vehicule_vise);
 
   async function commitContact(patch: Partial<Contact>) {
     setLocalContact((c) => ({ ...c, ...patch }));
@@ -404,7 +406,7 @@ export function DealDrawer({
           type_vehicule_vise: section1.type_vehicule_vise,
           coach_id: section1.coach_id,
           coach_vise: section1.coach_vise || null,
-          numero_unite_libre: section1.numero_unite_libre || null,
+          numero_unite_libre: section1.numero_unite_libre.trim() || null,
           valeur_echange: section1.valeur_echange,
           echange_marque: section1.echange_marque || null,
           echange_modele: section1.echange_modele || null,
@@ -1076,17 +1078,27 @@ export function DealDrawer({
                   <Select
                     value={section1.type_vehicule_vise ?? ""}
                     onChange={(e) =>
-                      setSection1((s) => ({
-                        ...s,
-                        type_vehicule_vise: (e.target.value || null) as Deal["type_vehicule_vise"],
-                        dirty: true,
-                      }))
+                      setSection1((s) => ({ ...s, type_vehicule_vise: e.target.value || null, dirty: true }))
                     }
                   >
                     <option value="">—</option>
-                    <option value="neuf">Neuf</option>
-                    <option value="usager">Usager</option>
+                    {TYPE_VEHICULE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                    {/* A legacy ('neuf'/'usager') or unknown stored value is
+                        listed only on the deal that already has it, so it's
+                        shown as-is and never silently cleared on save. */}
+                    {currentTypeInfo && !TYPE_VEHICULE_OPTIONS.some((o) => o.value === section1.type_vehicule_vise) && (
+                      <option value={section1.type_vehicule_vise ?? ""}>{currentTypeInfo.label}</option>
+                    )}
                   </Select>
+                  {currentTypeInfo?.legacy && (
+                    <p className="text-[11px] text-textSoft mt-1">
+                      Ancienne valeur, gardée telle quelle tant qu&apos;aucun autre type n&apos;est choisi.
+                    </p>
+                  )}
                 </Field>
               </div>
 
@@ -1131,14 +1143,15 @@ export function DealDrawer({
 
                 {!section1.coach_id && (
                   <div className="mt-3 space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-textSoft mb-1.5">Numéro d&apos;unité (temporaire)</p>
-                      <UnitPicker
-                        key={deal.id}
-                        value={section1.numero_unite_libre || null}
-                        onChange={(v) => setSection1((s) => ({ ...s, numero_unite_libre: v, dirty: true }))}
+                    {/* Free text (was a LC015-LC100 scroll wheel) - any unit
+                        number, stored as typed; existing values shown as-is. */}
+                    <Field label="Numéro d'unité (temporaire)">
+                      <TextInput
+                        value={section1.numero_unite_libre}
+                        placeholder="ex. LC042"
+                        onChange={(e) => setSection1((s) => ({ ...s, numero_unite_libre: e.target.value, dirty: true }))}
                       />
-                    </div>
+                    </Field>
                     <Field label="Modèle visé (si numéro exact inconnu)">
                       <TextInput
                         value={section1.coach_vise}
@@ -1149,6 +1162,11 @@ export function DealDrawer({
                 )}
               </div>
 
+              {/* Shown for ANY non-empty type - every Neuf-*, Used,
+                  Entertainer, Special, the legacy 'neuf'/'usager', and an
+                  unknown stored value alike - never keyed on one specific
+                  value, so a new type can't hide the trade-in fields. Hidden
+                  only while no type is chosen (unchanged rule). */}
               {section1.type_vehicule_vise && (
                 <label className="flex items-center gap-2 text-xs font-medium text-textSoft pt-1">
                   <input

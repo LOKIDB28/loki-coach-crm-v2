@@ -5,6 +5,8 @@
 // contacts.telephone are never rewritten by this module - callers format at
 // display time, and only format at input time when the user actually typed.
 
+import { neutralizeCsvFormula } from "./csv";
+
 /** Extension at the end: "x123", "x 123", "ext 123", "ext. 123", "poste 123", "#123". */
 const EXTENSION = /\s*(?:x|ext\.?|poste|#)\s*(\d+)\s*$/i;
 
@@ -107,5 +109,5 @@ export function phoneForCsv(input: string | null | undefined): string {
     const cc = formatted.match(COUNTRY_CODE_THEN_SPACE);
     if (cc) cell = `(+${cc[1]}) ${cc[2]}`;
   }
-  return /^[=+\-@\t\r]/.test(cell) ? `'${cell}` : cell;
+  return neutralizeCsvFormula(cell);
 }
